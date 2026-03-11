@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Drafts: public read/write — the document ID is the secret (share by link)
+    match /drafts/{draftId} {
+      allow read, write: if true;
+
+      match /changes/{changeId} {
+        allow read, write: if true;
+
+        match /comments/{commentId} {
+          allow read, write: if true;
+        }
+      }
+    }
+
+    // Snapshots: public read; anyone can create; no update or delete (immutable)
+    match /snapshots/{snapshotId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    // Shared card image URL cache — public read; anyone can add entries
+    match /meta/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Per-cube card name registry — additive only, public read/write
+    match /cubeCards/{cubeId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Reviews: public read/create; no update/delete on doc (immutable metadata)
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+
+      // Changes: read/create/update (soft-delete via update); no hard delete
+      match /changes/{changeId} {
+        allow read: if true;
+        allow create: if true;
+        allow update: if true;
+        allow delete: if false;
+      }
+
+      // Events: append-only log; no update or delete
+      match /events/{eventId} {
+        allow read: if true;
+        allow create: if true;
+        allow update, delete: if false;
+      }
+    }
+  }
+}

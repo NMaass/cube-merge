@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Background -->
+  <rect width="32" height="32" rx="6" fill="#0f172a"/>
+  <!-- Left card — removals (red) -->
+  <rect x="3" y="5" width="11" height="22" rx="2" fill="#ef4444"/>
+  <!-- Right card — additions (green) -->
+  <rect x="18" y="5" width="11" height="22" rx="2" fill="#22c55e"/>
+  <!-- Center gap -->
+  <rect x="13.5" y="5" width="5" height="22" fill="#0f172a"/>
+  <!-- Minus on left card -->
+  <rect x="5.5" y="15.5" width="6" height="1.5" rx="0.75" fill="white"/>
+  <!-- Plus on right card -->
+  <rect x="20.5" y="15.5" width="6" height="1.5" rx="0.75" fill="white"/>
+  <rect x="22.75" y="12.5" width="1.5" height="7" rx="0.75" fill="white"/>
+</svg>

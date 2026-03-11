@@ -1,0 +1,33 @@
+# Cube Merge
+
+A collaborative review tool for Magic: The Gathering cube curators. Compare two cube lists side-by-side, annotate proposed changes, and work with your playgroup in real-time — no accounts required.
+
+**[→ Try it live](your-url-here)**
+
+## What it does
+
+Cube Merge lets you load two CubeCobra cubes and start a shared review session. You select cards from the diff, group them into changes (add, remove, swap, keep, or reject), and leave comments for your group to discuss. Everyone works in the same session simultaneously — changes sync live across devices.
+
+Notable features:
+- **Real-time collaboration** — anonymous, no sign-in needed; just share the link
+- **Session changelog** — all work is grouped by author and time into sessions, with full edit history
+- **Branching** — fork a review from any set of sessions to continue work in a new direction
+- **Card images** — hover to preview, click to enlarge; images are cached across all users
+- **Export** — copy results as a summary or as CubeCobra-ready add/remove lists
+- **CubeCobra integration** — paste a cube ID, URL, or compare URL to get started instantly
+
+## Running locally
+
+Requires [Bun](https://bun.sh) and your own Firebase project with Firestore enabled.
+
+```sh
+bun install
+cp .env.example .env   # fill in your Firebase credentials
+bun dev
+```
+
+See `.env.example` for the required environment variables.
+
+## Tech stack
+
+Vite · React · TypeScript · Firebase Firestore · Tailwind CSS
