@@ -79,7 +79,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
       <div
         ref={panelRef}
         tabIndex={-1}
-        className="relative bg-slate-800 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 focus:outline-none"
+        className="relative bg-slate-800 rounded-xl shadow-2xl w-full max-w-md mx-4 px-4 py-4 sm:p-6 focus:outline-none"
       >
         <div className="flex items-center justify-between mb-4">
           <h2 id={titleId} className="text-lg font-semibold text-white">{title}</h2>
