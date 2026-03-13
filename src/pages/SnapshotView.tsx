@@ -5,6 +5,8 @@ import { doc, getDoc } from 'firebase/firestore/lite'
 import { db } from '../lib/firebase-lite'
 import { Snapshot } from '../types/firestore'
 import { Spinner } from '../components/ui/Spinner'
+import { Notice } from '../components/ui/Notice'
+import { Button } from '../components/ui/Button'
 import { EditModeProvider } from '../context/EditModeContext'
 import { ReviewWorkspace } from './NewReviewPage'
 
@@ -12,11 +14,16 @@ export default function SnapshotView() {
   const { snapshotId } = useParams<{ snapshotId: string }>()
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!snapshotId) return
+    setLoadError(null)
     getDoc(doc(db, 'snapshots', snapshotId)).then(snap => {
       if (snap.exists()) setSnapshot({ id: snap.id, ...snap.data() } as Snapshot)
+      setLoading(false)
+    }).catch(() => {
+      setLoadError('The snapshot could not be loaded right now. Please retry in a moment.')
       setLoading(false)
     })
   }, [snapshotId])
@@ -30,6 +37,25 @@ export default function SnapshotView() {
   }
 
   if (!snapshot) {
+    if (loadError) {
+      return (
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
+          <div className="w-full max-w-md">
+            <Notice
+              tone="error"
+              title="Couldn&apos;t load snapshot"
+              action={(
+                <Button size="sm" variant="secondary" onClick={() => window.location.reload()}>
+                  Retry
+                </Button>
+              )}
+            >
+              {loadError}
+            </Notice>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="text-center space-y-3">

@@ -10,6 +10,7 @@ import { db } from '../lib/firebase-lite'
 import { getCachedReview, setCachedReview } from '../lib/reviewCache'
 import { Spinner } from '../components/ui/Spinner'
 import { Button } from '../components/ui/Button'
+import { Notice } from '../components/ui/Notice'
 import { SessionCard } from '../components/changelog/SessionCard'
 import { groupIntoSessions, computeBranchChanges } from '../lib/sessions'
 import { Review, ReviewEvent, Session, LiveChange } from '../types/firestore'
@@ -39,6 +40,8 @@ export default function ChangelogPage() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [branching, setBranching] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [branchError, setBranchError] = useState<string | null>(null)
   const fetchedRef = useRef(false)
 
   useEffect(() => {
@@ -47,6 +50,7 @@ export default function ChangelogPage() {
 
     async function load() {
       try {
+        setLoadError(null)
         const [reviewSnap, eventsSnap] = await Promise.all([
           cached ? Promise.resolve(null) : getDoc(doc(db, 'reviews', reviewId!)),
           getDocs(query(
@@ -76,7 +80,7 @@ export default function ChangelogPage() {
         setSelectedSessions(new Set(grouped.map(s => s.key)))
       } catch (e) {
         console.error('Failed to load changelog:', e)
-        setNotFound(true)
+        setLoadError('The changelog could not be loaded right now. Please retry in a moment.')
       } finally {
         setLoading(false)
       }
@@ -97,6 +101,7 @@ export default function ChangelogPage() {
   async function handleCreateBranch() {
     if (!review || !reviewId) return
     setBranching(true)
+    setBranchError(null)
     try {
       const branchChanges = computeBranchChanges(events, selectedSessions, sessions)
       const newReviewId = nanoid(10)
@@ -146,6 +151,7 @@ export default function ChangelogPage() {
       navigate(`/c/${newReviewId}`)
     } catch (e) {
       console.error('Failed to create branch:', e)
+      setBranchError('The branch could not be created. Your selected sessions are still intact, so you can try again.')
       setBranching(false)
     }
   }
@@ -162,6 +168,25 @@ export default function ChangelogPage() {
   }
 
   if (notFound || !review) {
+    if (loadError) {
+      return (
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
+          <div className="w-full max-w-md">
+            <Notice
+              tone="error"
+              title="Couldn&apos;t load changelog"
+              action={(
+                <Button size="sm" variant="secondary" onClick={() => window.location.reload()}>
+                  Retry
+                </Button>
+              )}
+            >
+              {loadError}
+            </Notice>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
         <div className="text-center space-y-3">
@@ -201,6 +226,19 @@ export default function ChangelogPage() {
 
         {/* Content */}
         <main id="main-content" className="flex-1 max-w-2xl w-full mx-auto px-4 py-6 space-y-4">
+          {branchError ? (
+            <Notice
+              tone="error"
+              title="Branch creation failed"
+              action={(
+                <Button size="sm" variant="secondary" onClick={() => setBranchError(null)}>
+                  Dismiss
+                </Button>
+              )}
+            >
+              {branchError}
+            </Notice>
+          ) : null}
           {sessions.length === 0 ? (
             <div className="text-center py-16">
               <div className="text-3xl mb-3 opacity-30">◎</div>

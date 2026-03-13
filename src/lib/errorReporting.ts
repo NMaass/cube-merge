@@ -19,7 +19,7 @@ async function loadSentry() {
           }
 
           if (import.meta.env.VITE_SENTRY_ENABLE_REPLAY === 'true') {
-            integrations.push(Sentry.replayIntegration({ maskAllText: false, blockAllMedia: false }))
+            integrations.push(Sentry.replayIntegration({ maskAllText: true, blockAllMedia: true }))
           }
 
           Sentry.init({

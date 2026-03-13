@@ -39,6 +39,8 @@ function getCurrentLocation(): RouterLocation {
 }
 
 function matchPath(pattern: string, pathname: string): RouteMatch | null {
+  if (pattern === '*') return { params: {} }
+
   const patternParts = pattern.split('/').filter(Boolean)
   const pathParts = pathname.split('/').filter(Boolean)
 

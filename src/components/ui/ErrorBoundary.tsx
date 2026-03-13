@@ -39,14 +39,20 @@ export class ErrorBoundary extends Component<Props, State> {
             <p className="text-slate-400 text-sm">
               {this.state.error?.message ?? 'An unexpected error occurred'}
             </p>
-            <details className="text-left">
-              <summary className="cursor-pointer text-blue-400 hover:text-blue-300 text-sm">
-                Error details
-              </summary>
-              <pre className="text-xs text-slate-500 mt-2 p-3 bg-slate-800 rounded overflow-auto max-h-32 text-left">
-                {this.state.error?.stack}
-              </pre>
-            </details>
+            {import.meta.env.DEV ? (
+              <details className="text-left">
+                <summary className="cursor-pointer text-blue-400 hover:text-blue-300 text-sm">
+                  Error details
+                </summary>
+                <pre className="text-xs text-slate-500 mt-2 p-3 bg-slate-800 rounded overflow-auto max-h-32 text-left">
+                  {this.state.error?.stack}
+                </pre>
+              </details>
+            ) : (
+              <p className="text-xs text-slate-500">
+                The error was captured for debugging when monitoring is enabled.
+              </p>
+            )}
             <div className="flex gap-2 justify-center">
               <Button onClick={() => window.location.reload()}>
                 Reload page

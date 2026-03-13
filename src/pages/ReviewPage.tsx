@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext'
 import { EditModeProvider, useEditMode } from '../context/EditModeContext'
 import { Spinner } from '../components/ui/Spinner'
 import { Button } from '../components/ui/Button'
+import { Notice } from '../components/ui/Notice'
 import { SectionNav } from '../components/diff/SectionNav'
 import { DiffList } from '../components/diff/DiffList'
 import { ModeToggle } from '../components/diff/ModeToggle'
@@ -76,6 +77,7 @@ function ReviewWorkspace({
   )
   const [editingName, setEditingName] = useState(false)
   const [nameSaved, setNameSaved] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const diffData = review.rawData
   const cubeAId = review.cubeAId
@@ -128,6 +130,11 @@ function ReviewWorkspace({
 
   function changeDocRef(changeId: string) {
     return doc(db, 'reviews', reviewId, 'changes', changeId)
+  }
+
+  function showActionError(message: string, error: unknown) {
+    console.error(message, error)
+    setActionError(message)
   }
 
   async function handleSaveChange(
@@ -218,8 +225,9 @@ function ReviewWorkspace({
 
     try {
       await batch.commit()
+      setActionError(null)
     } catch (e) {
-      console.error('Failed to save change:', e)
+      showActionError('Your change was not saved. Check your connection and try again.', e)
     }
   }
 
@@ -254,8 +262,9 @@ function ReviewWorkspace({
         createdAt: now,
         payload: { before: cleanForFirestore(c), after: cleanForFirestore(after) },
       })
+      setActionError(null)
     } catch (e) {
-      console.error('Failed to edit change:', e)
+      showActionError('That edit did not go through. Please try again.', e)
     }
   }
 
@@ -277,8 +286,9 @@ function ReviewWorkspace({
         createdAt: now,
         payload: {},
       })
+      setActionError(null)
     } catch (e) {
-      console.error('Failed to delete change:', e)
+      showActionError('The change could not be deleted. Please try again.', e)
     }
   }
 
@@ -347,8 +357,9 @@ function ReviewWorkspace({
 
     try {
       await batch.commit()
+      setActionError(null)
     } catch (e) {
-      console.error('Failed to split change:', e)
+      showActionError('The split could not be saved. Please try again.', e)
     }
   }
 
@@ -368,8 +379,9 @@ function ReviewWorkspace({
       await updateDoc(changeDocRef(changeId), {
         comments: cleanForFirestore([...c.comments, newComment]),
       })
+      setActionError(null)
     } catch (e) {
-      console.error('Failed to add comment:', e)
+      showActionError('Your comment was not saved. Please try again.', e)
     }
   }
 
@@ -385,8 +397,9 @@ function ReviewWorkspace({
       await updateDoc(changeDocRef(changeId), {
         comments: cleanForFirestore(updated),
       })
+      setActionError(null)
     } catch (e) {
-      console.error('Failed to update comment resolution:', e)
+      showActionError('The comment status could not be updated. Please try again.', e)
     }
   }
 
@@ -425,8 +438,11 @@ function ReviewWorkspace({
         ),
       })
     }
-    try { await batch.commit() } catch (e) {
-      console.error('Failed to retroactively update attribution:', e)
+    try {
+      await batch.commit()
+      setActionError(null)
+    } catch (e) {
+      showActionError('Your display name changed locally, but older attributions could not be updated yet.', e)
     }
   }
 
@@ -606,6 +622,21 @@ function ReviewWorkspace({
             </button>
           </div>
         </header>
+        {actionError ? (
+          <div className="border-b border-red-500/20 bg-slate-900 px-3 py-3">
+            <Notice
+              tone="error"
+              title="Sync problem"
+              action={(
+                <Button size="sm" variant="secondary" onClick={() => setActionError(null)}>
+                  Dismiss
+                </Button>
+              )}
+            >
+              {actionError}
+            </Notice>
+          </div>
+        ) : null}
 
         {/* Content */}
         {changesLoading && mode === 'view' ? (
@@ -838,11 +869,13 @@ export default function ReviewPage() {
   const [review, setReview] = useState<Review | null>(cached ?? null)
   const [loading, setLoading] = useState(!cached)
   const [notFound, setNotFound] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const fetchedRef = useRef(!!cached)
 
   useEffect(() => {
     if (!reviewId || fetchedRef.current) return
     fetchedRef.current = true
+    setLoadError(null)
     getDoc(doc(db, 'reviews', reviewId!)).then(snap => {
       if (snap.exists()) {
         const r = { id: snap.id, ...snap.data() } as Review
@@ -853,7 +886,7 @@ export default function ReviewPage() {
       }
       setLoading(false)
     }).catch(() => {
-      setNotFound(true)
+      setLoadError('The review could not be loaded right now. Check your connection and try again.')
       setLoading(false)
     })
   }, [reviewId])
@@ -870,6 +903,25 @@ export default function ReviewPage() {
   }
 
   if (notFound || !review) {
+    if (loadError) {
+      return (
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
+          <div className="w-full max-w-md">
+            <Notice
+              tone="error"
+              title="Couldn&apos;t load review"
+              action={(
+                <Button size="sm" variant="secondary" onClick={() => window.location.reload()}>
+                  Retry
+                </Button>
+              )}
+            >
+              {loadError}
+            </Notice>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
         <div className="text-center space-y-3">

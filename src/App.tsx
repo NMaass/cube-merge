@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext'
 import { loadFirestoreImageCache } from './lib/imageCache'
 import { RouterProvider, useNavigate, useParams } from './lib/router'
 import LandingPage from './pages/LandingPage'
+import NotFoundPage from './pages/NotFoundPage'
 
 const ReviewPage = React.lazy(() => import('./pages/ReviewPage'))
 const ChangelogPage = React.lazy(() => import('./pages/ChangelogPage'))
@@ -41,6 +42,7 @@ const routes = [
   { path: '/new', element: <HomeRedirect /> },
   { path: '/r/:snapshotId', element: <SnapshotView /> },
   { path: '/:snapshotId', element: <SnapshotView /> },
+  { path: '*', element: <NotFoundPage /> },
 ]
 
 function LoadingScreen() {
