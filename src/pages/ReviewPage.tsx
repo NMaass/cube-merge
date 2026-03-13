@@ -492,8 +492,8 @@ function ReviewWorkspace({
     const rejectId = nanoid(8)
     const rejectChange: LiveChange = {
       id: rejectId, type: 'reject', cardsOut: [], cardsIn: selectedRightCards,
-      initialComment: '', authorId: identity.id, authorName: identity.displayName,
-      authorPhotoURL: identity.photoURL, unresolved: false, createdAt: now, comments: [],
+      initialComment: comment, authorId: identity.id, authorName: identity.displayName,
+      authorPhotoURL: identity.photoURL, unresolved, createdAt: now, comments: [],
     }
     batch.set(doc(db, 'reviews', reviewId, 'changes', rejectId), cleanForFirestore(rejectChange) as object)
     batch.set(doc(eventsRef()), {
