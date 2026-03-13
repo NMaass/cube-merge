@@ -1,6 +1,3 @@
-import { doc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore'
-import { db, FIREBASE_CONFIGURED } from './firebase'
-
 const KNOWN_IDS_KEY = 'cube-diff:known-cube-ids'
 
 export function getKnownCubeIds(): string[] {
@@ -19,10 +16,6 @@ function persistKnownCubeId(cubeId: string) {
   } catch { /* storage unavailable */ }
 }
 
-function cubeRef(cubeId: string) {
-  return doc(db, 'cubeCards', cubeId)
-}
-
 /**
  * Records card names seen for a cube using array union so entries are purely additive.
  * Also saves the cube ID to localStorage for landing page autocomplete.
@@ -32,12 +25,18 @@ export async function recordCubeCards(cubeId: string, cardNames: string[]): Prom
   // Always track the ID locally regardless of Firebase state
   persistKnownCubeId(cubeId)
 
+  const [{ db, FIREBASE_CONFIGURED }, { doc, setDoc, updateDoc, arrayUnion }] = await Promise.all([
+    import('./firebase'),
+    import('firebase/firestore'),
+  ])
+
   if (!FIREBASE_CONFIGURED || cardNames.length === 0) return
+  const cubeRef = doc(db, 'cubeCards', cubeId)
   try {
-    await updateDoc(cubeRef(cubeId), { names: arrayUnion(...cardNames) })
+    await updateDoc(cubeRef, { names: arrayUnion(...cardNames) })
   } catch (e: unknown) {
     if ((e as { code?: string })?.code === 'not-found') {
-      await setDoc(cubeRef(cubeId), { names: cardNames })
+      await setDoc(cubeRef, { names: cardNames })
     } else {
       console.warn('recordCubeCards failed:', e)
     }

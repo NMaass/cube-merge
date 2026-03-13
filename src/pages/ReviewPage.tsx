@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link } from '../lib/router'
+import { getCachedReview, setCachedReview } from '../lib/reviewCache'
 import { Helmet } from 'react-helmet-async'
 import {
   doc, collection, getDoc, setDoc, updateDoc, onSnapshot,
@@ -74,6 +75,7 @@ function ReviewWorkspace({
     identity.displayName === 'Reviewer' ? '' : identity.displayName
   )
   const [editingName, setEditingName] = useState(false)
+  const [nameSaved, setNameSaved] = useState(false)
 
   const diffData = review.rawData
   const cubeAId = review.cubeAId
@@ -388,11 +390,44 @@ function ReviewWorkspace({
     }
   }
 
-  function handleSetName() {
+  async function handleSetName() {
     const trimmed = nameInput.trim()
     if (!trimmed) return
     setName(trimmed)
     setEditingName(false)
+    setNameSaved(true)
+    setTimeout(() => setNameSaved(false), 700)
+
+    // Retroactively update attribution on this user's existing changes and comments.
+    const updatedChanges = changes.map(change => ({
+      ...change,
+      authorName: change.authorId === identity.id ? trimmed : change.authorName,
+      comments: change.comments.map(cm => (
+        cm.authorId === identity.id ? { ...cm, authorName: trimmed } : cm
+      )),
+    }))
+    const touchedChanges = updatedChanges.filter((change, index) => {
+      const original = changes[index]
+      return change.authorName !== original.authorName
+        || change.comments.some((comment, commentIndex) => (
+          comment.authorName !== original.comments[commentIndex]?.authorName
+        ))
+    })
+    setChanges(updatedChanges)
+    if (touchedChanges.length === 0) return
+
+    const batch = writeBatch(db)
+    for (const change of touchedChanges) {
+      batch.update(changeDocRef(change.id), {
+        authorName: change.authorName,
+        comments: cleanForFirestore(
+          change.comments
+        ),
+      })
+    }
+    try { await batch.commit() } catch (e) {
+      console.error('Failed to retroactively update attribution:', e)
+    }
   }
 
   // ── Copy helpers ─────────────────────────────────────────────────────────────
@@ -527,7 +562,7 @@ function ReviewWorkspace({
           <div className="ml-auto flex items-center gap-1 min-w-0">
             {/* Changelog link */}
             <Link
-              to={`/review/${reviewId}/changelog`}
+              to={`/c/${reviewId}/changelog`}
               className="hidden sm:inline-flex items-center gap-1 h-8 px-2 rounded text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -563,9 +598,9 @@ function ReviewWorkspace({
             {/* Name / avatar — always just the avatar button; editing opens a modal */}
             <button
               onClick={() => { setNameInput(identity.displayName === 'Reviewer' ? '' : identity.displayName); setEditingName(true) }}
-              className="h-8 w-8 rounded-full bg-slate-600 hover:bg-slate-500 flex items-center justify-center text-[11px] font-bold uppercase text-slate-200 transition-colors shrink-0"
-              title={`Reviewing as ${identity.displayName} — tap to change`}
-              aria-label={`Your name: ${identity.displayName}. Tap to change.`}
+              className={`h-8 w-8 rounded-full flex items-center justify-center text-[11px] font-bold uppercase text-slate-200 transition-colors shrink-0 ${nameSaved ? 'avatar-saved' : ''} ${identity.displayName === 'Reviewer' ? 'bg-amber-700 hover:bg-amber-600 ring-2 ring-amber-500/50' : 'bg-slate-600 hover:bg-slate-500'}`}
+              title={identity.displayName === 'Reviewer' ? 'Tap to set your name' : `Reviewing as ${identity.displayName} — tap to change`}
+              aria-label={identity.displayName === 'Reviewer' ? 'Set your name' : `Your name: ${identity.displayName}. Tap to change.`}
             >
               {identity.displayName[0]}
             </button>
@@ -654,7 +689,7 @@ function ReviewWorkspace({
                       <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">net</div>
                     </div>
                     <Link
-                      to={`/review/${reviewId}/changelog`}
+                      to={`/c/${reviewId}/changelog`}
                       className="text-center ml-auto group"
                       title="View changelog"
                     >
@@ -734,9 +769,17 @@ function ReviewWorkspace({
           />
         )}
 
-        <Modal open={editingName} onClose={() => setEditingName(false)} title="Your name">
+        <Modal
+          open={editingName}
+          onClose={() => setEditingName(false)}
+          title={identity.displayName === 'Reviewer' ? 'Set your name' : 'Your name'}
+        >
           <div className="space-y-4">
-            <p className="text-sm text-slate-400">This is how you appear on changes and comments.</p>
+            <p className="text-sm text-slate-400">
+              {identity.displayName === 'Reviewer'
+                ? 'Your name lets others know who\'s making changes. It\'ll appear on your annotations and comments.'
+                : 'This is how you appear on changes and comments. Saving will update your existing annotations too.'}
+            </p>
             <input
               autoFocus
               type="text"
@@ -746,7 +789,7 @@ function ReviewWorkspace({
                 if (e.key === 'Enter') handleSetName()
                 if (e.key === 'Escape') setEditingName(false)
               }}
-              placeholder="Your name"
+              placeholder="e.g. Alex, TheMagicPlayer…"
               aria-label="Your display name"
               className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
@@ -791,17 +834,20 @@ function ReviewWorkspace({
 
 export default function ReviewPage() {
   const { reviewId } = useParams<{ reviewId: string }>()
-  const [review, setReview] = useState<Review | null>(null)
-  const [loading, setLoading] = useState(true)
+  const cached = reviewId ? getCachedReview(reviewId) : undefined
+  const [review, setReview] = useState<Review | null>(cached ?? null)
+  const [loading, setLoading] = useState(!cached)
   const [notFound, setNotFound] = useState(false)
-  const fetchedRef = useRef(false)
+  const fetchedRef = useRef(!!cached)
 
   useEffect(() => {
     if (!reviewId || fetchedRef.current) return
     fetchedRef.current = true
     getDoc(doc(db, 'reviews', reviewId!)).then(snap => {
       if (snap.exists()) {
-        setReview({ id: snap.id, ...snap.data() } as Review)
+        const r = { id: snap.id, ...snap.data() } as Review
+        setCachedReview(reviewId!, r)
+        setReview(r)
       } else {
         setNotFound(true)
       }

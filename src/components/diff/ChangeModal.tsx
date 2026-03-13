@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
@@ -6,6 +6,7 @@ import { Textarea } from '../ui/Textarea'
 import { useAuth } from '../../context/AuthContext'
 import { useEditMode } from '../../context/EditModeContext'
 import { getCachedImage } from '../../lib/imageCache'
+import { FullscreenCardModal } from '../cards/FullscreenCardModal'
 import { CubeCard } from '../../types/cube'
 import { ChangeType } from '../../types/firestore'
 
@@ -26,7 +27,12 @@ const TYPE_TITLES: Record<ChangeType, string> = {
   reject: 'Reject Cards',
 }
 
-function PreviewableCardRow({ card, colorClass, prefix }: { card: CubeCard; colorClass: string; prefix: string }) {
+function PreviewableCardRow({ card, colorClass, prefix, onPreview }: {
+  card: CubeCard
+  colorClass: string
+  prefix: string
+  onPreview: (card: CubeCard) => void
+}) {
   const [hoverPos, setHoverPos] = useState<{ top: number; left: number } | null>(null)
   const imageUrl = getCachedImage(card.name)
 
@@ -43,13 +49,16 @@ function PreviewableCardRow({ card, colorClass, prefix }: { card: CubeCard; colo
 
   return (
     <>
-      <div
-        className={`text-sm py-0.5 cursor-default select-none ${imageUrl ? 'hover:opacity-80' : ''} ${colorClass}`}
+      <button
+        type="button"
+        className={`w-full text-left text-sm py-1 select-none ${imageUrl ? 'cursor-pointer hover:opacity-80 active:opacity-60' : 'cursor-default'} ${colorClass} focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 rounded`}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setHoverPos(null)}
+        onClick={() => imageUrl && onPreview(card)}
+        aria-label={imageUrl ? `Preview ${card.name}` : card.name}
       >
         {prefix} {card.name}
-      </div>
+      </button>
       {hoverPos && imageUrl && createPortal(
         <div
           className="hidden md:block pointer-events-none"
@@ -69,12 +78,24 @@ function PreviewableCardRow({ card, colorClass, prefix }: { card: CubeCard; colo
 }
 
 export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCards, onSave, forceType }: ChangeModalProps) {
-  const { identity } = useAuth()
+  const { identity, setName } = useAuth()
   const { actionType, clearSelection } = useEditMode()
   const [comment, setComment] = useState('')
   const [unresolved, setUnresolved] = useState(false)
+  const [editingAuthor, setEditingAuthor] = useState(false)
+  const [authorInput, setAuthorInput] = useState('')
+  const [previewCard, setPreviewCard] = useState<CubeCard | null>(null)
 
   const type = forceType ?? actionType ?? 'add'
+
+  // Reset transient state when modal closes
+  useEffect(() => {
+    if (!open) {
+      setEditingAuthor(false)
+      setAuthorInput('')
+      setPreviewCard(null)
+    }
+  }, [open])
 
   function handleSave() {
     const finalCardsOut = forceType === 'reject' ? [] : selectedLeftCards
@@ -92,19 +113,19 @@ export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCar
         <div className="bg-slate-700/50 rounded-lg p-3 space-y-0.5">
           {forceType === 'reject'
             ? selectedRightCards.map(c => (
-                <PreviewableCardRow key={c.name} card={c} colorClass="text-orange-300" prefix="×" />
+                <PreviewableCardRow key={c.name} card={c} colorClass="text-orange-300" prefix="×" onPreview={setPreviewCard} />
               ))
             : forceType === 'keep'
             ? selectedLeftCards.map(c => (
-                <PreviewableCardRow key={c.name} card={c} colorClass="text-cyan-300" prefix="↺" />
+                <PreviewableCardRow key={c.name} card={c} colorClass="text-cyan-300" prefix="↺" onPreview={setPreviewCard} />
               ))
             : (
               <>
                 {selectedLeftCards.map(c => (
-                  <PreviewableCardRow key={c.name} card={c} colorClass="text-red-300" prefix="−" />
+                  <PreviewableCardRow key={c.name} card={c} colorClass="text-red-300" prefix="−" onPreview={setPreviewCard} />
                 ))}
                 {selectedRightCards.map(c => (
-                  <PreviewableCardRow key={c.name} card={c} colorClass="text-green-300" prefix="+" />
+                  <PreviewableCardRow key={c.name} card={c} colorClass="text-green-300" prefix="+" onPreview={setPreviewCard} />
                 ))}
               </>
             )}
@@ -128,15 +149,65 @@ export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCar
         </label>
 
         <div className="flex items-center justify-between">
-          <span className="text-xs text-slate-500">
-            as <strong className="text-slate-400">{identity.displayName}</strong>
-          </span>
+          {editingAuthor ? (
+            <form
+              className="flex items-center gap-1"
+              onSubmit={e => {
+                e.preventDefault()
+                const trimmed = authorInput.trim()
+                if (trimmed) setName(trimmed)
+                setEditingAuthor(false)
+              }}
+            >
+              <input
+                autoFocus
+                type="text"
+                value={authorInput}
+                onChange={e => setAuthorInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Escape') setEditingAuthor(false) }}
+                placeholder="Your name"
+                aria-label="Your display name"
+                className="h-8 w-28 bg-slate-700 border border-slate-600 rounded px-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <button
+                type="submit"
+                disabled={!authorInput.trim()}
+                className="px-2 py-1 text-xs text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingAuthor(false)}
+                aria-label="Cancel name edit"
+                className="px-2 py-1 text-xs text-slate-500 hover:text-slate-300 transition-colors rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-slate-500"
+              >
+                ✕
+              </button>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={() => { setAuthorInput(identity.displayName === 'Reviewer' ? '' : identity.displayName); setEditingAuthor(true) }}
+              className="text-xs text-slate-400 hover:text-slate-200 transition-colors rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+              aria-label={`Posting as ${identity.displayName} — click to change name`}
+            >
+              as <strong className="text-slate-300">{identity.displayName}</strong>
+            </button>
+          )}
           <div className="flex gap-2">
             <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
             <Button onClick={handleSave} size="sm">Save</Button>
           </div>
         </div>
       </div>
+
+      <FullscreenCardModal
+        open={!!previewCard}
+        onClose={() => setPreviewCard(null)}
+        cardName={previewCard?.name ?? ''}
+        imageUrl={previewCard ? getCachedImage(previewCard.name) ?? undefined : undefined}
+      />
     </Modal>
   )
 }

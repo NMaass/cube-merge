@@ -1,0 +1,28 @@
+{
+  "name": "Cube Merge - MTG Cube Comparison Tool",
+  "short_name": "Cube Merge",
+  "description": "Compare two MTG cube lists side by side, annotate card changes, and collaborate in real time with your playgroup.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "categories": ["games", "entertainment", "productivity"],
+  "lang": "en-US",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "form_factor": "wide"
+    }
+  ]
+}

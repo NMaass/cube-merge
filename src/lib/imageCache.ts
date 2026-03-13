@@ -1,6 +1,3 @@
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'
-import { db, FIREBASE_CONFIGURED } from './firebase'
-
 const CACHE_KEY = 'cube-diff:image-cache'
 const MAX_SIZE_BYTES = 4 * 1024 * 1024 // 4MB
 const FS_SESSION_KEY = 'cube-diff:fs-cache-loaded'
@@ -107,19 +104,33 @@ export function initImageCache() {
 // individual entries merge without overwriting unrelated cards. Falls back to
 // setDoc on first write when the document doesn't exist yet.
 
-const FS_REF = () => doc(db, 'meta', 'imageCache')
-
 // Characters invalid in Firestore field path segments
 const FS_INVALID = /[~/\*\[\]]/
 
 function isSafeForFs(name: string) { return !FS_INVALID.test(name) }
+
+async function getFirestoreDeps() {
+  const [{ db, FIREBASE_CONFIGURED }, firestore] = await Promise.all([
+    import('./firebase'),
+    import('firebase/firestore'),
+  ])
+
+  return {
+    db,
+    FIREBASE_CONFIGURED,
+    doc: firestore.doc,
+    getDoc: firestore.getDoc,
+    setDoc: firestore.setDoc,
+    updateDoc: firestore.updateDoc,
+  }
+}
 
 // Singleton promise — resolves once the Firestore cache has been loaded (or skipped).
 // Callers can await this to ensure cached data is in memory before fetching from Scryfall.
 let _fsReadyPromise: Promise<void> | null = null
 
 export function waitForFirestoreCache(): Promise<void> {
-  return _fsReadyPromise ?? Promise.resolve()
+  return _fsReadyPromise ?? loadFirestoreImageCache()
 }
 
 /** Load the shared Firestore image cache once per browser session.
@@ -131,10 +142,11 @@ export function loadFirestoreImageCache(): Promise<void> {
 }
 
 async function _doLoadFirestoreCache(): Promise<void> {
+  const { db, FIREBASE_CONFIGURED, doc, getDoc } = await getFirestoreDeps()
   if (!FIREBASE_CONFIGURED) return
   if (sessionStorage.getItem(FS_SESSION_KEY)) return
   try {
-    const snap = await getDoc(FS_REF())
+    const snap = await getDoc(doc(db, 'meta', 'imageCache'))
     if (snap.exists()) {
       const data = snap.data() as { urls?: Record<string, string> }
       const raw = data.urls ?? {}
@@ -159,6 +171,11 @@ let _persistTimer: ReturnType<typeof setTimeout> | null = null
 
 async function _flushPersist() {
   if (_pendingImages.size === 0) return
+  const { db, FIREBASE_CONFIGURED, doc, updateDoc, setDoc } = await getFirestoreDeps()
+  if (!FIREBASE_CONFIGURED) {
+    _pendingImages = new Map()
+    return
+  }
   const toWrite = _pendingImages
   _pendingImages = new Map()
 
@@ -169,7 +186,7 @@ async function _flushPersist() {
   if (Object.keys(updates).length === 0) return
 
   try {
-    await updateDoc(FS_REF(), updates)
+    await updateDoc(doc(db, 'meta', 'imageCache'), updates)
   } catch (e: unknown) {
     const code = (e as { code?: string })?.code
     if (code === 'not-found') {
@@ -177,7 +194,7 @@ async function _flushPersist() {
       for (const [name, url] of toWrite) {
         if (isSafeForFs(name)) urlObj[name] = url
       }
-      await setDoc(FS_REF(), { urls: urlObj })
+      await setDoc(doc(db, 'meta', 'imageCache'), { urls: urlObj })
     } else {
       if (import.meta.env.DEV) console.warn('[imageCache] Firestore persist failed:', e)
     }
@@ -187,12 +204,9 @@ async function _flushPersist() {
 /** Persist newly fetched Scryfall URLs to Firestore so all users benefit.
  *  Debounced — batches rapid successive calls into a single Firestore write. */
 export function persistImagesToFirestore(newImages: Map<string, string>): void {
-  if (!FIREBASE_CONFIGURED || newImages.size === 0) return
+  if (!import.meta.env.VITE_FIREBASE_PROJECT_ID) return
+  if (newImages.size === 0) return
   for (const [k, v] of newImages) _pendingImages.set(k, v)
   if (_persistTimer) clearTimeout(_persistTimer)
   _persistTimer = setTimeout(_flushPersist, 2000)
 }
-
-// Kick off the Firestore load immediately when this module is first imported,
-// so the cache is as warm as possible by the time components start fetching.
-loadFirestoreImageCache()

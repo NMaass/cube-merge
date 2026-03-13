@@ -1,10 +1,11 @@
-import { memo, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { memo, useEffect, useRef, useState } from 'react'
 import { CubeCard } from '../../types/cube'
 import { ManaCostPips } from './ManaCostPips'
 import { FullscreenCardModal } from './FullscreenCardModal'
+import { CardHoverPortal } from './CardHoverPortal'
 import { clearCachedImage, setCachedImages } from '../../lib/imageCache'
 import { fetchSingleCardImage } from '../../lib/scryfall'
+import { useCardHoverPreview } from '../../hooks/useCardHoverPreview'
 
 export type CardState = 'normal' | 'selected' | 'accepted' | 'removed' | 'kept' | 'rejected'
 
@@ -36,32 +37,69 @@ const NAME_CLASS: Record<CardState, string> = {
 }
 
 export const CardListItem = memo(function CardListItem({ card, state, imageUrl, backImageUrl, loading, onClick }: CardListItemProps) {
-  const [hoverPos, setHoverPos] = useState<{ top: number; left: number } | null>(null)
+  const { hoverPos, setPosition, close, activeRef } = useCardHoverPreview()
   const [previewOpen, setPreviewOpen] = useState(false)
   const [recoveredUrl, setRecoveredUrl] = useState<string | undefined>(undefined)
   const [recoveredBack, setRecoveredBack] = useState<string | undefined>(undefined)
   const [recovering, setRecovering] = useState(false)
+  const [selectPop, setSelectPop] = useState(false)
+  const prevStateRef = useRef(state)
+
+  useEffect(() => {
+    if (state === 'selected' && prevStateRef.current !== 'selected') {
+      setSelectPop(true)
+      const t = setTimeout(() => setSelectPop(false), 250)
+      return () => clearTimeout(t)
+    }
+    prevStateRef.current = state
+  }, [state])
 
   const effectiveUrl = recoveredUrl ?? imageUrl
   const effectiveBack = recoveredBack ?? backImageUrl
 
+  async function ensureImageLoaded(coords?: { x: number; y: number }) {
+    if (effectiveUrl || recovering) {
+      if (coords && effectiveUrl && activeRef.current) {
+        setPosition(coords.x, coords.y, !!effectiveBack)
+      }
+      return
+    }
+
+    setRecovering(true)
+    try {
+      const fresh = await fetchSingleCardImage(card.name)
+      const freshUrl = fresh.get(card.name.toLowerCase())
+      const freshBack = fresh.get(card.name.toLowerCase() + '__back')
+      if (!freshUrl) {
+        console.warn(`[image] "${card.name}": no image returned — card missing from Scryfall or Scryfall unreachable`)
+        return
+      }
+
+      setCachedImages(fresh)
+      setRecoveredUrl(freshUrl)
+      setRecoveredBack(freshBack)
+      if (coords && activeRef.current) {
+        setPosition(coords.x, coords.y, !!freshBack)
+      }
+    } catch {
+      console.warn(`[image] "${card.name}": preview fetch threw — Scryfall unreachable`)
+    } finally {
+      setRecovering(false)
+    }
+  }
+
   function handleMouseMove(e: React.MouseEvent) {
-    if (!effectiveUrl) return
-    const imgW = 180
-    const totalW = effectiveBack ? imgW * 2 + 8 : imgW
-    const imgH = 252
-    let left = e.clientX + 20
-    let top = e.clientY - imgH / 2
-    if (left + totalW > window.innerWidth - 8) left = e.clientX - totalW - 20
-    if (top < 8) top = 8
-    if (top + imgH > window.innerHeight - 8) top = window.innerHeight - imgH - 8
-    setHoverPos({ top, left })
+    if (!effectiveUrl) {
+      void ensureImageLoaded({ x: e.clientX, y: e.clientY })
+      return
+    }
+    setPosition(e.clientX, e.clientY, !!effectiveBack)
   }
 
   async function handleImageError(failedUrl: string) {
     if (recovering) return
     setRecovering(true)
-    setHoverPos(null)
+    close()
     console.warn(`[image] Load failed for "${card.name}" — URL: ${failedUrl}`)
     clearCachedImage(card.name)
     try {
@@ -69,7 +107,7 @@ export const CardListItem = memo(function CardListItem({ card, state, imageUrl, 
       const freshUrl = fresh.get(card.name.toLowerCase())
       const freshBack = fresh.get(card.name.toLowerCase() + '__back')
       if (freshUrl && freshUrl !== failedUrl) {
-        console.log(`[image] "${card.name}": stale/junk URL in cache — recovered from Scryfall`)
+        if (import.meta.env.DEV) console.log(`[image] "${card.name}": stale/junk URL in cache — recovered from Scryfall`)
         setCachedImages(fresh)
         setRecoveredUrl(freshUrl)
         if (freshBack) setRecoveredBack(freshBack)
@@ -88,21 +126,30 @@ export const CardListItem = memo(function CardListItem({ card, state, imageUrl, 
   return (
     <>
       <div
-        className={`flex items-center gap-2 px-3 py-2.5 border-b border-slate-700/40 select-none transition-colors ${ROW_CLASS[state]}`}
+        className={`flex items-center gap-2 px-3 py-2.5 border-b border-slate-700/40 select-none transition-colors ${ROW_CLASS[state]} ${selectPop ? 'card-select-pop' : ''}`}
         onClick={onClick}
         onMouseMove={handleMouseMove}
-        onMouseLeave={() => setHoverPos(null)}
+        onMouseEnter={e => {
+          activeRef.current = true
+          if (!effectiveUrl) {
+            void ensureImageLoaded({ x: e.clientX, y: e.clientY })
+          }
+        }}
+        onMouseLeave={close}
       >
         <span className={`text-sm font-medium flex-1 truncate ${NAME_CLASS[state]}`}>{card.name}</span>
         <ManaCostPips manaCost={card.manaCost} />
         {/* Mobile preview button — pulsing indicator when loading */}
         <button
-          className="md:hidden ml-1 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-500 hover:text-slate-300 focus:outline-none focus:text-slate-200 relative"
-          onClick={e => { e.stopPropagation(); setPreviewOpen(true) }}
+          className="md:hidden ml-1 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-500 hover:text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded relative"
+          onClick={e => {
+            e.stopPropagation()
+            setPreviewOpen(true)
+            void ensureImageLoaded()
+          }}
           aria-label={`Preview ${card.name}`}
         >
-          {loading ? (
-            // Animated ring while image is loading
+          {loading || recovering ? (
             <span className="relative flex h-4 w-4">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-500 opacity-50" />
               <span className="relative inline-flex rounded-full h-4 w-4 border border-slate-500" />
@@ -115,38 +162,21 @@ export const CardListItem = memo(function CardListItem({ card, state, imageUrl, 
         </button>
       </div>
 
-      {hoverPos && effectiveUrl && createPortal(
-        <div
-          className="hidden md:flex gap-2 pointer-events-none"
-          style={{ position: 'fixed', top: hoverPos.top, left: hoverPos.left, zIndex: 9999 }}
-        >
-          <img
-            src={effectiveUrl}
-            alt={card.name}
-            className="rounded-lg shadow-2xl border border-slate-600/50"
-            style={{ width: 180 }}
-            onError={() => handleImageError(effectiveUrl)}
-          />
-          {effectiveBack && (
-            <img
-              src={effectiveBack}
-              alt={`${card.name} (back)`}
-              className="rounded-lg shadow-2xl border border-slate-600/50"
-              style={{ width: 180 }}
-            />
-          )}
-        </div>,
-        document.body
-      )}
+      <CardHoverPortal
+        hoverPos={hoverPos}
+        imageUrl={effectiveUrl}
+        backImageUrl={effectiveBack}
+        cardName={card.name}
+        onError={() => effectiveUrl && handleImageError(effectiveUrl)}
+      />
 
       <FullscreenCardModal
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
         cardName={card.name}
-        card={card}
         imageUrl={effectiveUrl}
         backImageUrl={effectiveBack}
-        loading={loading}
+        loading={loading || recovering}
       />
     </>
   )

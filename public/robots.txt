@@ -1,3 +1,14 @@
 User-agent: *
 Allow: /
+
+# Sitemap
+Sitemap: https://cubediff.app/sitemap.xml
+
+# Block crawling of specific dynamic routes that may not be useful for SEO
 Disallow: /new
+Disallow: /r/
+Disallow: /review/*/changelog
+
+# Allow crawling of main routes
+Allow: /
+Allow: /changelog

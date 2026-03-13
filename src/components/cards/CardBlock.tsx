@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { CubeCard } from '../../types/cube'
 import { ManaCostPips } from './ManaCostPips'
 import { FullscreenCardModal } from './FullscreenCardModal'
@@ -12,7 +12,7 @@ interface CardBlockProps {
   onToggle?: () => void
 }
 
-export function CardBlock({ card, state, imageUrl, onToggle }: CardBlockProps) {
+export const CardBlock = memo(function CardBlock({ card, state, imageUrl, onToggle }: CardBlockProps) {
   const [previewOpen, setPreviewOpen] = useState(false)
   const isLocked = state === 'accepted' || state === 'removed'
 
@@ -52,4 +52,4 @@ export function CardBlock({ card, state, imageUrl, onToggle }: CardBlockProps) {
       />
     </>
   )
-}
+})

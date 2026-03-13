@@ -38,16 +38,19 @@ function CardSearch({ label, candidates, onAdd }: CardSearchProps) {
         type="text"
         value={query}
         placeholder={`Add ${label}...`}
+        aria-label={`Search ${label}`}
         onChange={e => { setQuery(e.target.value); setOpen(true) }}
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), BLUR_DISMISS_DELAY_MS)}
         className="w-full bg-slate-700/60 border border-slate-600 rounded px-2 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
       />
       {open && matches.length > 0 && (
-        <div className="absolute z-50 w-full mt-0.5 bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-hidden">
+        <div role="listbox" aria-label={`${label} suggestions`} className="absolute z-50 w-full mt-0.5 bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-hidden">
           {matches.map(card => (
             <button
               key={card.name}
+              role="option"
+              aria-selected={false}
               className="w-full text-left px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700 transition-colors"
               onMouseDown={() => select(card)}
             >
@@ -160,12 +163,15 @@ export function EditChangeModal({ open, onClose, change, allCardsA, allCardsB, o
           <div className="pt-1 border-t border-slate-700/60">
             <button
               onClick={() => { onClose(); onSplit() }}
-              className="text-xs text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1"
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-slate-700/50 hover:bg-slate-700 border border-slate-600/40 hover:border-slate-500 text-sm text-slate-300 hover:text-white transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <svg className="w-4 h-4 text-slate-500 group-hover:text-blue-400 transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h4m0 0V3m0 4l-4 4m8-4h-4m0 0V3m0 4l4 4M8 17H4m4 0v4m0-4l-4-4m12 4h4m-4 0v4m0-4l4-4" />
               </svg>
-              Split into two changes
+              <span>Split into two changes</span>
+              <svg className="w-3.5 h-3.5 ml-auto text-slate-600 group-hover:text-slate-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
             </button>
           </div>
         )}

@@ -1,19 +1,16 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from '../lib/router'
 import { Helmet } from 'react-helmet-async'
-import { doc, setDoc, Timestamp } from 'firebase/firestore'
 import { nanoid } from 'nanoid'
 import { Button } from '../components/ui/Button'
 import { Spinner } from '../components/ui/Spinner'
 import { parseCubeCobraId, parseCompareUrl, fetchCubeCobraList, computeDiff } from '../lib/cubecobra'
 import { getKnownCubeIds } from '../lib/cubeCards'
-import { db } from '../lib/firebase'
 import { CubeCard } from '../types/cube'
 
 type PageState = 'form' | 'loading' | 'cors_fallback' | 'creating'
 
 function cleanForFirestore(obj: unknown): unknown {
-  if (obj instanceof Timestamp) return obj
   if (obj === undefined || obj === null) return null
   if (Array.isArray(obj)) return obj.map(cleanForFirestore)
   if (typeof obj === 'object') {
@@ -87,6 +84,10 @@ export default function LandingPage() {
     diff: { onlyA: CubeCard[]; onlyB: CubeCard[] }
   ) {
     setPageState('creating')
+    const [{ db }, { doc, setDoc, Timestamp }] = await Promise.all([
+      import('../lib/firebase-lite'),
+      import('firebase/firestore/lite'),
+    ])
     const reviewId = nanoid(10)
     await setDoc(doc(db, 'reviews', reviewId), cleanForFirestore({
       id: reviewId,
@@ -96,7 +97,7 @@ export default function LandingPage() {
       rawData: diff,
       createdAt: Timestamp.now(),
     }) as object)
-    navigate(`/review/${reviewId}`)
+    navigate(`/c/${reviewId}`)
   }
 
   async function handleStart() {
@@ -138,7 +139,7 @@ export default function LandingPage() {
       const diff = computeDiff(cardsA, cardsB)
       await createReviewAndRedirect(corsIdA, corsIdB, diff)
     } catch (e) {
-      alert('Failed to parse JSON: ' + String(e))
+      setFetchError('Failed to parse JSON: ' + (e instanceof Error ? e.message : String(e)))
     }
   }
 
@@ -179,6 +180,7 @@ export default function LandingPage() {
                 </a>
                 <textarea
                   placeholder="Paste Cube A JSON here…"
+                  aria-label="Cube A JSON"
                   value={manualJsonA}
                   onChange={e => setManualJsonA(e.target.value)}
                   className="w-full h-24 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
@@ -193,10 +195,14 @@ export default function LandingPage() {
                 </a>
                 <textarea
                   placeholder="Paste Cube B JSON here…"
+                  aria-label="Cube B JSON"
                   value={manualJsonB}
                   onChange={e => setManualJsonB(e.target.value)}
                   className="w-full h-24 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 />
+                {fetchError && (
+                  <p role="alert" className="text-sm text-red-400">{fetchError}</p>
+                )}
                 <Button
                   onClick={handleManualParse}
                   disabled={!manualJsonA.trim() || !manualJsonB.trim()}
@@ -275,7 +281,10 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-6 space-y-4 shadow-xl shadow-black/20">
+            <form
+              className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-6 space-y-4 shadow-xl shadow-black/20"
+              onSubmit={e => { e.preventDefault(); handleStart() }}
+            >
               {knownIds.length > 0 && (
                 <datalist id="known-cube-ids">
                   {knownIds.map(id => <option key={id} value={id} />)}
@@ -294,7 +303,6 @@ export default function LandingPage() {
                   placeholder="ID, URL, or compare URL"
                   value={cubeAInput}
                   onChange={e => handleInputA(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleStart()}
                   autoComplete="off"
                   className="w-full bg-slate-700/60 border border-slate-600 rounded-lg px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
@@ -312,7 +320,6 @@ export default function LandingPage() {
                   placeholder="ID, URL, or compare URL"
                   value={cubeBInput}
                   onChange={e => handleInputB(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleStart()}
                   autoComplete="off"
                   className="w-full bg-slate-700/60 border border-slate-600 rounded-lg px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
@@ -323,14 +330,14 @@ export default function LandingPage() {
               )}
 
               <Button
-                onClick={handleStart}
+                type="submit"
                 disabled={!canStart}
-                className="w-full"
+                className={`w-full ${canStart ? 'btn-glow' : ''}`}
                 size="lg"
               >
                 Start Review →
               </Button>
-            </div>
+            </form>
 
             <div className="text-center text-sm text-slate-500 space-y-1">
               <p>Or open a published snapshot:</p>
