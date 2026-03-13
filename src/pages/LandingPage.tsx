@@ -3,6 +3,7 @@ import { useNavigate } from '../lib/router'
 import { Helmet } from 'react-helmet-async'
 import { nanoid } from 'nanoid'
 import { Button } from '../components/ui/Button'
+import { Notice } from '../components/ui/Notice'
 import { Spinner } from '../components/ui/Spinner'
 import { parseCubeCobraId, parseCompareUrl, fetchCubeCobraList, computeDiff } from '../lib/cubecobra'
 import { getKnownCubeIds } from '../lib/cubeCards'
@@ -56,6 +57,7 @@ export default function LandingPage() {
   const [validationError, setValidationError] = useState<string | null>(null)
   const [pageState, setPageState] = useState<PageState>('form')
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [manualError, setManualError] = useState<string | null>(null)
   const [corsIdA, setCorsIdA] = useState('')
   const [corsIdB, setCorsIdB] = useState('')
   const [manualJsonA, setManualJsonA] = useState('')
@@ -65,6 +67,7 @@ export default function LandingPage() {
   function handleInputA(value: string) {
     setValidationError(null)
     setFetchError(null)
+    setManualError(null)
     const compare = parseCompareUrl(value)
     if (compare) { setCubeAInput(compare[0]); setCubeBInput(compare[1]); return }
     setCubeAInput(value)
@@ -73,6 +76,7 @@ export default function LandingPage() {
   function handleInputB(value: string) {
     setValidationError(null)
     setFetchError(null)
+    setManualError(null)
     const compare = parseCompareUrl(value)
     if (compare) { setCubeAInput(compare[0]); setCubeBInput(compare[1]); return }
     setCubeBInput(value)
@@ -89,14 +93,16 @@ export default function LandingPage() {
       import('firebase/firestore/lite'),
     ])
     const reviewId = nanoid(10)
-    await setDoc(doc(db, 'reviews', reviewId), cleanForFirestore({
-      id: reviewId,
-      cubeAId: idA,
-      cubeBId: idB,
-      title: `${idA} vs ${idB}`,
-      rawData: diff,
+    await setDoc(doc(db, 'reviews', reviewId), {
+      ...(cleanForFirestore({
+        id: reviewId,
+        cubeAId: idA,
+        cubeBId: idB,
+        title: `${idA} vs ${idB}`,
+        rawData: diff,
+      }) as object),
       createdAt: Timestamp.now(),
-    }) as object)
+    })
     navigate(`/c/${reviewId}`)
   }
 
@@ -109,6 +115,7 @@ export default function LandingPage() {
 
     setPageState('loading')
     setFetchError(null)
+    setManualError(null)
     try {
       const [cardsA, cardsB] = await Promise.all([
         fetchCubeCobraList(idA),
@@ -133,13 +140,39 @@ export default function LandingPage() {
   }
 
   async function handleManualParse() {
+    setFetchError(null)
+    setManualError(null)
     try {
-      const cardsA = parseCardsFromJson(JSON.parse(manualJsonA))
-      const cardsB = parseCardsFromJson(JSON.parse(manualJsonB))
+      if (!manualJsonA.trim() || !manualJsonB.trim()) {
+        setManualError('Paste both cube JSON payloads before creating the review.')
+        return
+      }
+
+      let cardsA: CubeCard[]
+      let cardsB: CubeCard[]
+
+      try {
+        cardsA = parseCardsFromJson(JSON.parse(manualJsonA))
+      } catch (error) {
+        setManualError(`Cube A JSON could not be parsed: ${error instanceof Error ? error.message : String(error)}`)
+        return
+      }
+
+      try {
+        cardsB = parseCardsFromJson(JSON.parse(manualJsonB))
+      } catch (error) {
+        setManualError(`Cube B JSON could not be parsed: ${error instanceof Error ? error.message : String(error)}`)
+        return
+      }
+
       const diff = computeDiff(cardsA, cardsB)
       await createReviewAndRedirect(corsIdA, corsIdB, diff)
     } catch (e) {
-      setFetchError('Failed to parse JSON: ' + (e instanceof Error ? e.message : String(e)))
+      setManualError(
+        e instanceof Error
+          ? `The review could not be created: ${e.message}`
+          : `The review could not be created: ${String(e)}`
+      )
     }
   }
 
@@ -159,17 +192,27 @@ export default function LandingPage() {
             <>
               <div>
                 <button
-                  onClick={() => setPageState('form')}
+                  onClick={() => {
+                    setPageState('form')
+                    setManualError(null)
+                  }}
                   className="text-slate-400 hover:text-slate-200 text-sm mb-3"
                 >
                   ← Back
                 </button>
-                <p className="text-amber-400 font-medium">CubeCobra blocked the request</p>
+                <p className="text-amber-400 font-medium">CubeCobra blocked the automatic import</p>
                 <p className="text-sm text-slate-400 mt-1">
-                  Open each URL below, copy the full JSON, and paste it here.
+                  You can still create the review manually in three quick steps.
                 </p>
               </div>
-              <div className="space-y-2">
+              <Notice tone="info" title="Manual import steps">
+                <ol className="space-y-1 pl-5 list-decimal text-sm">
+                  <li>Open each CubeCobra API link in a new tab.</li>
+                  <li>Copy the full JSON response for each cube.</li>
+                  <li>Paste both payloads below and create the review.</li>
+                </ol>
+              </Notice>
+              <div className="space-y-3">
                 <a
                   href={`https://cubecobra.com/cube/api/cubeJSON/${corsIdA}`}
                   target="_blank"
@@ -200,16 +243,35 @@ export default function LandingPage() {
                   onChange={e => setManualJsonB(e.target.value)}
                   className="w-full h-24 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 />
-                {fetchError && (
-                  <p role="alert" className="text-sm text-red-400">{fetchError}</p>
-                )}
-                <Button
-                  onClick={handleManualParse}
-                  disabled={!manualJsonA.trim() || !manualJsonB.trim()}
-                  className="w-full"
-                >
-                  Parse & Open Review
-                </Button>
+                {manualError ? (
+                  <Notice tone="error" title="Import problem">
+                    {manualError}
+                  </Notice>
+                ) : null}
+                {fetchError ? (
+                  <Notice tone="error" title="Automatic import failed">
+                    {fetchError}
+                  </Notice>
+                ) : null}
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    onClick={handleManualParse}
+                    disabled={!manualJsonA.trim() || !manualJsonB.trim()}
+                    className="w-full"
+                  >
+                    Create Review From JSON
+                  </Button>
+                  <Button
+                    onClick={handleStart}
+                    variant="secondary"
+                    className="w-full sm:w-auto"
+                  >
+                    Retry automatic import
+                  </Button>
+                </div>
+                <p className="text-xs text-slate-500">
+                  If parsing fails, make sure you copied the raw JSON response and not the formatted page chrome from your browser.
+                </p>
               </div>
             </>
           )}
