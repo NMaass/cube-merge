@@ -10,6 +10,8 @@ export function ModeToggle({ mode, onChange }: ModeToggleProps) {
       onClick={() => onChange(isEdit ? 'view' : 'edit')}
       className="relative flex items-center h-8 rounded-full bg-slate-700 border border-slate-600 p-0.5 shrink-0"
       title={`Switch to ${isEdit ? 'view' : 'edit'} mode`}
+      aria-label={`${isEdit ? 'Edit' : 'View'} mode — click to switch`}
+      aria-pressed={isEdit}
     >
       {/* Sliding pill — left=Edit, right=View */}
       <span

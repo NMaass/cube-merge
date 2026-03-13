@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { Textarea } from '../ui/Textarea'
 import { Button } from '../ui/Button'
@@ -14,11 +14,14 @@ type SuggestionKind = 'card' | 'reviewer'
 interface Suggestion { kind: SuggestionKind; value: string }
 
 export function CommentComposer({ onSubmit, diffCards = [], reviewerNames = [] }: CommentComposerProps) {
-  const { identity } = useAuth()
+  const { identity, setName } = useAuth()
   const [body, setBody] = useState('')
+  const [editingAuthor, setEditingAuthor] = useState(false)
+  const [authorInput, setAuthorInput] = useState('')
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [triggerStart, setTriggerStart] = useState(-1)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const instructionsId = useId()
 
   function findTrigger(text: string, pos: number): { kind: SuggestionKind; query: string; start: number } | null {
     // Walk back from cursor to find unbroken / or @ trigger
@@ -105,12 +108,19 @@ export function CommentComposer({ onSubmit, diffCards = [], reviewerNames = [] }
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           rows={2}
+          aria-label="Comment text"
+          aria-describedby={instructionsId}
         />
+        <div id={instructionsId} className="sr-only">
+          Type / followed by card names for autocomplete, or @ followed by reviewer names. Press Ctrl+Enter (or Cmd+Enter on Mac) to submit.
+        </div>
         {suggestions.length > 0 && (
-          <div className="absolute left-0 right-0 bottom-full mb-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-hidden z-50">
+          <div role="listbox" aria-label="Suggestions" className="absolute left-0 right-0 bottom-full mb-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-hidden z-50">
             {suggestions.map((s, i) => (
               <button
                 key={i}
+                role="option"
+                aria-selected={false}
                 className="w-full text-left px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700 flex items-center gap-2 transition-colors"
                 onMouseDown={e => { e.preventDefault(); selectSuggestion(s) }}
               >
@@ -129,9 +139,52 @@ export function CommentComposer({ onSubmit, diffCards = [], reviewerNames = [] }
         <Button size="sm" onClick={handleSubmit} disabled={!body.trim()}>
           Post
         </Button>
-        <span className="text-xs text-slate-500 ml-auto">
-          as <strong className="text-slate-400">{identity.displayName}</strong>
-        </span>
+        {editingAuthor ? (
+          <form
+            className="flex items-center gap-1 ml-auto"
+            onSubmit={e => {
+              e.preventDefault()
+              const trimmed = authorInput.trim()
+              if (trimmed) setName(trimmed)
+              setEditingAuthor(false)
+            }}
+          >
+            <input
+              autoFocus
+              type="text"
+              value={authorInput}
+              onChange={e => setAuthorInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Escape') setEditingAuthor(false) }}
+              placeholder="Your name"
+              aria-label="Your display name"
+              className="h-8 w-28 bg-slate-700 border border-slate-600 rounded px-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <button
+              type="submit"
+              disabled={!authorInput.trim()}
+              className="px-2 py-1 text-xs text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditingAuthor(false)}
+              aria-label="Cancel name edit"
+              className="px-2 py-1 text-xs text-slate-500 hover:text-slate-300 transition-colors rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-slate-500"
+            >
+              ✕
+            </button>
+          </form>
+        ) : (
+          <button
+            type="button"
+            onClick={() => { setAuthorInput(identity.displayName === 'Reviewer' ? '' : identity.displayName); setEditingAuthor(true) }}
+            className="text-xs text-slate-400 ml-auto hover:text-slate-200 transition-colors rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+            aria-label={`Posting as ${identity.displayName} — click to change name`}
+          >
+            as <strong className="text-slate-200 font-semibold">{identity.displayName}</strong>
+          </button>
+        )}
       </div>
     </div>
   )

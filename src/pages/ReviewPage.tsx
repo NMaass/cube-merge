@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link } from '../lib/router'
+import { getCachedReview, setCachedReview } from '../lib/reviewCache'
 import { Helmet } from 'react-helmet-async'
 import {
   doc, collection, getDoc, setDoc, updateDoc, onSnapshot,
@@ -11,6 +12,7 @@ import { useAuth } from '../context/AuthContext'
 import { EditModeProvider, useEditMode } from '../context/EditModeContext'
 import { Spinner } from '../components/ui/Spinner'
 import { Button } from '../components/ui/Button'
+import { Notice } from '../components/ui/Notice'
 import { SectionNav } from '../components/diff/SectionNav'
 import { DiffList } from '../components/diff/DiffList'
 import { ModeToggle } from '../components/diff/ModeToggle'
@@ -74,6 +76,8 @@ function ReviewWorkspace({
     identity.displayName === 'Reviewer' ? '' : identity.displayName
   )
   const [editingName, setEditingName] = useState(false)
+  const [nameSaved, setNameSaved] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const diffData = review.rawData
   const cubeAId = review.cubeAId
@@ -126,6 +130,11 @@ function ReviewWorkspace({
 
   function changeDocRef(changeId: string) {
     return doc(db, 'reviews', reviewId, 'changes', changeId)
+  }
+
+  function showActionError(message: string, error: unknown) {
+    console.error(message, error)
+    setActionError(message)
   }
 
   async function handleSaveChange(
@@ -216,8 +225,9 @@ function ReviewWorkspace({
 
     try {
       await batch.commit()
+      setActionError(null)
     } catch (e) {
-      console.error('Failed to save change:', e)
+      showActionError('Your change was not saved. Check your connection and try again.', e)
     }
   }
 
@@ -252,8 +262,9 @@ function ReviewWorkspace({
         createdAt: now,
         payload: { before: cleanForFirestore(c), after: cleanForFirestore(after) },
       })
+      setActionError(null)
     } catch (e) {
-      console.error('Failed to edit change:', e)
+      showActionError('That edit did not go through. Please try again.', e)
     }
   }
 
@@ -275,8 +286,9 @@ function ReviewWorkspace({
         createdAt: now,
         payload: {},
       })
+      setActionError(null)
     } catch (e) {
-      console.error('Failed to delete change:', e)
+      showActionError('The change could not be deleted. Please try again.', e)
     }
   }
 
@@ -345,8 +357,9 @@ function ReviewWorkspace({
 
     try {
       await batch.commit()
+      setActionError(null)
     } catch (e) {
-      console.error('Failed to split change:', e)
+      showActionError('The split could not be saved. Please try again.', e)
     }
   }
 
@@ -366,8 +379,9 @@ function ReviewWorkspace({
       await updateDoc(changeDocRef(changeId), {
         comments: cleanForFirestore([...c.comments, newComment]),
       })
+      setActionError(null)
     } catch (e) {
-      console.error('Failed to add comment:', e)
+      showActionError('Your comment was not saved. Please try again.', e)
     }
   }
 
@@ -383,16 +397,53 @@ function ReviewWorkspace({
       await updateDoc(changeDocRef(changeId), {
         comments: cleanForFirestore(updated),
       })
+      setActionError(null)
     } catch (e) {
-      console.error('Failed to update comment resolution:', e)
+      showActionError('The comment status could not be updated. Please try again.', e)
     }
   }
 
-  function handleSetName() {
+  async function handleSetName() {
     const trimmed = nameInput.trim()
     if (!trimmed) return
     setName(trimmed)
     setEditingName(false)
+    setNameSaved(true)
+    setTimeout(() => setNameSaved(false), 700)
+
+    // Retroactively update attribution on this user's existing changes and comments.
+    const updatedChanges = changes.map(change => ({
+      ...change,
+      authorName: change.authorId === identity.id ? trimmed : change.authorName,
+      comments: change.comments.map(cm => (
+        cm.authorId === identity.id ? { ...cm, authorName: trimmed } : cm
+      )),
+    }))
+    const touchedChanges = updatedChanges.filter((change, index) => {
+      const original = changes[index]
+      return change.authorName !== original.authorName
+        || change.comments.some((comment, commentIndex) => (
+          comment.authorName !== original.comments[commentIndex]?.authorName
+        ))
+    })
+    setChanges(updatedChanges)
+    if (touchedChanges.length === 0) return
+
+    const batch = writeBatch(db)
+    for (const change of touchedChanges) {
+      batch.update(changeDocRef(change.id), {
+        authorName: change.authorName,
+        comments: cleanForFirestore(
+          change.comments
+        ),
+      })
+    }
+    try {
+      await batch.commit()
+      setActionError(null)
+    } catch (e) {
+      showActionError('Your display name changed locally, but older attributions could not be updated yet.', e)
+    }
   }
 
   // ── Copy helpers ─────────────────────────────────────────────────────────────
@@ -527,7 +578,7 @@ function ReviewWorkspace({
           <div className="ml-auto flex items-center gap-1 min-w-0">
             {/* Changelog link */}
             <Link
-              to={`/review/${reviewId}/changelog`}
+              to={`/c/${reviewId}/changelog`}
               className="hidden sm:inline-flex items-center gap-1 h-8 px-2 rounded text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -563,14 +614,29 @@ function ReviewWorkspace({
             {/* Name / avatar — always just the avatar button; editing opens a modal */}
             <button
               onClick={() => { setNameInput(identity.displayName === 'Reviewer' ? '' : identity.displayName); setEditingName(true) }}
-              className="h-8 w-8 rounded-full bg-slate-600 hover:bg-slate-500 flex items-center justify-center text-[11px] font-bold uppercase text-slate-200 transition-colors shrink-0"
-              title={`Reviewing as ${identity.displayName} — tap to change`}
-              aria-label={`Your name: ${identity.displayName}. Tap to change.`}
+              className={`h-8 w-8 rounded-full flex items-center justify-center text-[11px] font-bold uppercase text-slate-200 transition-colors shrink-0 ${nameSaved ? 'avatar-saved' : ''} ${identity.displayName === 'Reviewer' ? 'bg-amber-700 hover:bg-amber-600 ring-2 ring-amber-500/50' : 'bg-slate-600 hover:bg-slate-500'}`}
+              title={identity.displayName === 'Reviewer' ? 'Tap to set your name' : `Reviewing as ${identity.displayName} — tap to change`}
+              aria-label={identity.displayName === 'Reviewer' ? 'Set your name' : `Your name: ${identity.displayName}. Tap to change.`}
             >
               {identity.displayName[0]}
             </button>
           </div>
         </header>
+        {actionError ? (
+          <div className="border-b border-red-500/20 bg-slate-900 px-3 py-3">
+            <Notice
+              tone="error"
+              title="Sync problem"
+              action={(
+                <Button size="sm" variant="secondary" onClick={() => setActionError(null)}>
+                  Dismiss
+                </Button>
+              )}
+            >
+              {actionError}
+            </Notice>
+          </div>
+        ) : null}
 
         {/* Content */}
         {changesLoading && mode === 'view' ? (
@@ -654,7 +720,7 @@ function ReviewWorkspace({
                       <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">net</div>
                     </div>
                     <Link
-                      to={`/review/${reviewId}/changelog`}
+                      to={`/c/${reviewId}/changelog`}
                       className="text-center ml-auto group"
                       title="View changelog"
                     >
@@ -734,9 +800,17 @@ function ReviewWorkspace({
           />
         )}
 
-        <Modal open={editingName} onClose={() => setEditingName(false)} title="Your name">
+        <Modal
+          open={editingName}
+          onClose={() => setEditingName(false)}
+          title={identity.displayName === 'Reviewer' ? 'Set your name' : 'Your name'}
+        >
           <div className="space-y-4">
-            <p className="text-sm text-slate-400">This is how you appear on changes and comments.</p>
+            <p className="text-sm text-slate-400">
+              {identity.displayName === 'Reviewer'
+                ? 'Your name lets others know who\'s making changes. It\'ll appear on your annotations and comments.'
+                : 'This is how you appear on changes and comments. Saving will update your existing annotations too.'}
+            </p>
             <input
               autoFocus
               type="text"
@@ -746,7 +820,7 @@ function ReviewWorkspace({
                 if (e.key === 'Enter') handleSetName()
                 if (e.key === 'Escape') setEditingName(false)
               }}
-              placeholder="Your name"
+              placeholder="e.g. Alex, TheMagicPlayer…"
               aria-label="Your display name"
               className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
@@ -791,23 +865,28 @@ function ReviewWorkspace({
 
 export default function ReviewPage() {
   const { reviewId } = useParams<{ reviewId: string }>()
-  const [review, setReview] = useState<Review | null>(null)
-  const [loading, setLoading] = useState(true)
+  const cached = reviewId ? getCachedReview(reviewId) : undefined
+  const [review, setReview] = useState<Review | null>(cached ?? null)
+  const [loading, setLoading] = useState(!cached)
   const [notFound, setNotFound] = useState(false)
-  const fetchedRef = useRef(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const fetchedRef = useRef(!!cached)
 
   useEffect(() => {
     if (!reviewId || fetchedRef.current) return
     fetchedRef.current = true
+    setLoadError(null)
     getDoc(doc(db, 'reviews', reviewId!)).then(snap => {
       if (snap.exists()) {
-        setReview({ id: snap.id, ...snap.data() } as Review)
+        const r = { id: snap.id, ...snap.data() } as Review
+        setCachedReview(reviewId!, r)
+        setReview(r)
       } else {
         setNotFound(true)
       }
       setLoading(false)
     }).catch(() => {
-      setNotFound(true)
+      setLoadError('The review could not be loaded right now. Check your connection and try again.')
       setLoading(false)
     })
   }, [reviewId])
@@ -824,6 +903,25 @@ export default function ReviewPage() {
   }
 
   if (notFound || !review) {
+    if (loadError) {
+      return (
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
+          <div className="w-full max-w-md">
+            <Notice
+              tone="error"
+              title="Couldn&apos;t load review"
+              action={(
+                <Button size="sm" variant="secondary" onClick={() => window.location.reload()}>
+                  Retry
+                </Button>
+              )}
+            >
+              {loadError}
+            </Notice>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
         <div className="text-center space-y-3">

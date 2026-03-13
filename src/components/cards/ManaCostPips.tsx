@@ -1,3 +1,5 @@
+import { memo } from 'react'
+
 const SYMBOL_COLORS: Record<string, string> = {
   W: 'bg-yellow-50 text-yellow-800 border-yellow-200',
   U: 'bg-blue-200 text-blue-800 border-blue-300',
@@ -7,19 +9,20 @@ const SYMBOL_COLORS: Record<string, string> = {
   C: 'bg-gray-300 text-gray-700 border-gray-400',
 }
 
-export function ManaCostPips({ manaCost }: { manaCost?: string }) {
+export const ManaCostPips = memo(function ManaCostPips({ manaCost }: { manaCost?: string }) {
   if (!manaCost) return null
 
   const symbols = manaCost.match(/\{([^}]+)\}/g) || []
 
   return (
-    <span className="flex items-center gap-0.5 ml-1">
+    <span className="flex items-center gap-0.5 ml-1" role="img" aria-label={`Mana cost: ${manaCost}`}>
       {symbols.map((sym, i) => {
         const inner = sym.slice(1, -1)
         const colorClass = SYMBOL_COLORS[inner] || 'bg-gray-400 text-gray-800 border-gray-500'
         return (
           <span
             key={i}
+            aria-hidden="true"
             className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold border ${colorClass}`}
           >
             {inner}
@@ -28,4 +31,4 @@ export function ManaCostPips({ manaCost }: { manaCost?: string }) {
       })}
     </span>
   )
-}
+})

@@ -45,7 +45,9 @@ function parseCubeCobraCard(card: CubeCobraCard): CubeCard | null {
   }
 }
 
-const CUBECOBRA_BASE = '/cubecobra'
+// In dev, Vite proxies /cubecobra → https://cubecobra.com to avoid mixed-content issues.
+// In production, CubeCobra serves Access-Control-Allow-Origin: * so direct fetch works fine.
+const CUBECOBRA_BASE = import.meta.env.DEV ? '/cubecobra' : 'https://cubecobra.com'
 
 // Extract a flat card array from whatever shape CubeCobra returns.
 // Known shapes:
@@ -102,8 +104,12 @@ export async function fetchCubeCobraList(cubeId: string): Promise<CubeCard[]> {
         signal: AbortSignal.timeout(10000),
       })
 
-      gotAnyResponse = true
-      if (import.meta.env.DEV) console.log(`[CubeCobra] ${url} → ${response.status}`)
+      // Only count as a real CubeCobra response if content-type is JSON.
+      // In production, /cubecobra/* hits Firebase's SPA catch-all and returns
+      // index.html (text/html), which must not be mistaken for a server reply.
+      const contentType = response.headers.get('content-type') || ''
+      if (contentType.includes('application/json')) gotAnyResponse = true
+      if (import.meta.env.DEV) console.log(`[CubeCobra] ${url} → ${response.status} (${contentType})`)
 
       if (!response.ok) continue
 

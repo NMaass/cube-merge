@@ -10,6 +10,7 @@ interface ModalProps {
 export function Modal({ open, onClose, title, children }: ModalProps) {
   const titleId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
+  const prevOpenRef = useRef(false)
 
   // Lock body scroll while open — prevents iOS scroll-through on the backdrop
   useEffect(() => {
@@ -19,11 +20,21 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
     return () => { document.body.style.overflow = prev }
   }, [open])
 
+  // Focus the panel only when transitioning from closed → open.
+  // Kept separate from the key-handler effect so that a changing onClose
+  // reference (e.g. an inline arrow function in the parent) does NOT re-run
+  // this effect and steal focus away from inputs inside the modal.
+  useEffect(() => {
+    if (open && !prevOpenRef.current) {
+      panelRef.current?.focus()
+    }
+    prevOpenRef.current = open
+  }, [open])
+
+  // Key handler — allowed to re-register when onClose changes.
+  // This does NOT touch focus, so it is safe to re-run.
   useEffect(() => {
     if (!open) return
-
-    // Move focus into the modal panel
-    panelRef.current?.focus()
 
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') { onClose(); return }
@@ -75,7 +86,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
           <button
             onClick={onClose}
             aria-label="Close dialog"
-            className="text-slate-400 hover:text-white transition-colors p-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="text-slate-400 hover:text-white transition-colors p-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

@@ -28,6 +28,16 @@ bun dev
 
 See `.env.example` for the required environment variables.
 
+## Example review
+
+Add a concrete walkthrough here once you have one ready. A good example section should include:
+- the two source cubes or compare URL
+- a link to the generated review
+- a short before/after summary of the changes discussed
+- one screenshot or GIF of the review UI
+
+This is worth adding for first-time users because the app is more immediately understandable when they can inspect a real review before creating their own.
+
 ## Tech stack
 
 Vite · React · TypeScript · Firebase Firestore · Tailwind CSS

@@ -14,8 +14,8 @@ export function SectionHeader({ colorCategory, cmc, countA, countB }: SectionHea
 
   return (
     <div
-      className="flex items-center justify-between px-3 py-1.5 rounded-t-lg text-sm font-semibold sticky top-0 z-10"
-      style={{ backgroundColor: bg, color: '#1e293b', minHeight: 32 }}
+      className="flex items-center justify-between px-3 py-1.5 rounded-t-lg text-sm font-semibold sticky top-0 z-10 text-slate-800 min-h-8"
+      style={{ backgroundColor: bg }}
     >
       <span>
         {COLOR_NAMES[colorCategory]}{!isLand && ` — ${cmc} CMC`}

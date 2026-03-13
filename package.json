@@ -6,23 +6,30 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "analyze": "npm run build && open dist/bundle-analyzer.html",
+    "cf:deploy": "npm run build && npx -y wrangler@latest pages deploy dist --project-name cube-merge --branch main --commit-dirty"
   },
   "dependencies": {
+    "@sentry/react": "^10.43.0",
+    "@types/react-window": "^1.8.8",
     "firebase": "^12.10.0",
-    "firebase-tools": "^15.9.0",
     "nanoid": "^5.0.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-helmet-async": "^2.0.4",
-    "react-router-dom": "^6.21.1"
+    "react-router-dom": "^6.21.1",
+    "react-window": "^2.2.7",
+    "web-vitals": "^5.1.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.17",
+    "firebase-tools": "^15.9.1",
     "postcss": "^8.4.33",
+    "rollup-plugin-visualizer": "^7.0.1",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3",
     "vite": "^5.0.11"

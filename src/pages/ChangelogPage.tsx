@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link } from '../lib/router'
 import { Helmet } from 'react-helmet-async'
 import {
   doc, collection, getDoc, getDocs, setDoc, writeBatch,
   orderBy, query, Timestamp,
-} from 'firebase/firestore'
+} from 'firebase/firestore/lite'
 import { nanoid } from 'nanoid'
-import { db } from '../lib/firebase'
+import { db } from '../lib/firebase-lite'
+import { getCachedReview, setCachedReview } from '../lib/reviewCache'
 import { Spinner } from '../components/ui/Spinner'
 import { Button } from '../components/ui/Button'
+import { Notice } from '../components/ui/Notice'
 import { SessionCard } from '../components/changelog/SessionCard'
 import { groupIntoSessions, computeBranchChanges } from '../lib/sessions'
 import { Review, ReviewEvent, Session, LiveChange } from '../types/firestore'
@@ -30,13 +32,16 @@ function cleanForFirestore(obj: unknown): unknown {
 export default function ChangelogPage() {
   const { reviewId } = useParams<{ reviewId: string }>()
   const navigate = useNavigate()
-  const [review, setReview] = useState<Review | null>(null)
+  const cached = reviewId ? getCachedReview(reviewId) : undefined
+  const [review, setReview] = useState<Review | null>(cached ?? null)
   const [events, setEvents] = useState<ReviewEvent[]>([])
   const [sessions, setSessions] = useState<Session[]>([])
   const [selectedSessions, setSelectedSessions] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [branching, setBranching] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [branchError, setBranchError] = useState<string | null>(null)
   const fetchedRef = useRef(false)
 
   useEffect(() => {
@@ -45,21 +50,27 @@ export default function ChangelogPage() {
 
     async function load() {
       try {
+        setLoadError(null)
         const [reviewSnap, eventsSnap] = await Promise.all([
-          getDoc(doc(db, 'reviews', reviewId!)),
+          cached ? Promise.resolve(null) : getDoc(doc(db, 'reviews', reviewId!)),
           getDocs(query(
             collection(db, 'reviews', reviewId!, 'events'),
             orderBy('createdAt', 'asc')
           )),
         ])
 
-        if (!reviewSnap.exists()) {
+        let reviewData: Review
+        if (cached) {
+          reviewData = cached
+        } else if (reviewSnap && reviewSnap.exists()) {
+          reviewData = { id: reviewSnap.id, ...reviewSnap.data() } as Review
+          setCachedReview(reviewId!, reviewData)
+        } else {
           setNotFound(true)
           setLoading(false)
           return
         }
 
-        const reviewData = { id: reviewSnap.id, ...reviewSnap.data() } as Review
         const eventsData = eventsSnap.docs.map(d => ({ id: d.id, ...d.data() } as ReviewEvent))
         const grouped = groupIntoSessions(eventsData)
 
@@ -69,7 +80,7 @@ export default function ChangelogPage() {
         setSelectedSessions(new Set(grouped.map(s => s.key)))
       } catch (e) {
         console.error('Failed to load changelog:', e)
-        setNotFound(true)
+        setLoadError('The changelog could not be loaded right now. Please retry in a moment.')
       } finally {
         setLoading(false)
       }
@@ -90,6 +101,7 @@ export default function ChangelogPage() {
   async function handleCreateBranch() {
     if (!review || !reviewId) return
     setBranching(true)
+    setBranchError(null)
     try {
       const branchChanges = computeBranchChanges(events, selectedSessions, sessions)
       const newReviewId = nanoid(10)
@@ -136,9 +148,10 @@ export default function ChangelogPage() {
         await batch.commit()
       }
 
-      navigate(`/review/${newReviewId}`)
+      navigate(`/c/${newReviewId}`)
     } catch (e) {
       console.error('Failed to create branch:', e)
+      setBranchError('The branch could not be created. Your selected sessions are still intact, so you can try again.')
       setBranching(false)
     }
   }
@@ -155,6 +168,25 @@ export default function ChangelogPage() {
   }
 
   if (notFound || !review) {
+    if (loadError) {
+      return (
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
+          <div className="w-full max-w-md">
+            <Notice
+              tone="error"
+              title="Couldn&apos;t load changelog"
+              action={(
+                <Button size="sm" variant="secondary" onClick={() => window.location.reload()}>
+                  Retry
+                </Button>
+              )}
+            >
+              {loadError}
+            </Notice>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
         <div className="text-center space-y-3">
@@ -178,7 +210,7 @@ export default function ChangelogPage() {
         {/* Header */}
         <header className="shrink-0 flex items-center gap-3 px-4 py-3 bg-slate-800 border-b border-slate-700">
           <Link
-            to={`/review/${reviewId}`}
+            to={`/c/${reviewId}`}
             className="flex items-center gap-1.5 text-slate-400 hover:text-slate-200 transition-colors"
             aria-label="Back to review"
           >
@@ -190,22 +222,23 @@ export default function ChangelogPage() {
             <h1 className="text-sm font-semibold text-white">Changelog</h1>
             <p className="text-xs text-slate-500 truncate">{review.cubeAId} vs {review.cubeBId}</p>
           </div>
-          <Button
-            onClick={handleCreateBranch}
-            disabled={noneSelected || branching}
-            size="sm"
-            variant="primary"
-          >
-            {branching ? (
-              <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            ) : 'Create Branch'}
-          </Button>
         </header>
 
         {/* Content */}
         <main id="main-content" className="flex-1 max-w-2xl w-full mx-auto px-4 py-6 space-y-4">
+          {branchError ? (
+            <Notice
+              tone="error"
+              title="Branch creation failed"
+              action={(
+                <Button size="sm" variant="secondary" onClick={() => setBranchError(null)}>
+                  Dismiss
+                </Button>
+              )}
+            >
+              {branchError}
+            </Notice>
+          ) : null}
           {sessions.length === 0 ? (
             <div className="text-center py-16">
               <div className="text-3xl mb-3 opacity-30">◎</div>
