@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Session, ReviewEventType } from '../../types/firestore'
 import { CubeCard } from '../../types/cube'
-import { formatTimeRange } from '../../lib/sessions'
 import { getCachedImage } from '../../lib/imageCache'
 import { FullscreenCardModal } from '../cards/FullscreenCardModal'
 import { CardHoverPortal } from '../cards/CardHoverPortal'
@@ -62,7 +61,7 @@ interface SessionCardProps {
 export function SessionCard({ session, checked, onToggle, index }: SessionCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [previewName, setPreviewName] = useState<string | null>(null)
-  const timeRange = formatTimeRange(session.startTime, session.endTime)
+  const dateLabel = session.startTime.toDate().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
   const eventCount = session.events.length
 
   const previewImageUrl = previewName ? getCachedImage(previewName) ?? undefined : undefined
@@ -83,14 +82,14 @@ export function SessionCard({ session, checked, onToggle, index }: SessionCardPr
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-medium text-slate-200 truncate">{session.authorName}</div>
-          <div className="text-xs text-slate-500">{timeRange}</div>
+          <div className="text-xs text-slate-500">{dateLabel}</div>
         </div>
         <span className="text-xs text-slate-500 bg-slate-700/60 px-2 py-0.5 rounded-full shrink-0 hidden xs:inline">
           {eventCount} {eventCount === 1 ? 'event' : 'events'}
         </span>
         <button
           onClick={() => setExpanded(v => !v)}
-          className="text-slate-500 hover:text-slate-300 transition-colors shrink-0 p-1"
+          className="text-slate-500 hover:text-slate-200 hover:bg-slate-700/60 transition-colors shrink-0 p-2 rounded-lg min-h-[44px] sm:min-h-0 flex items-center"
           aria-label={expanded ? 'Collapse session' : `Expand session — ${eventCount} ${eventCount === 1 ? 'event' : 'events'}`}
         >
           <svg
@@ -121,7 +120,7 @@ export function SessionCard({ session, checked, onToggle, index }: SessionCardPr
                     {cards.map((card, i) => (
                       <span key={card.name} className="text-xs">
                         <CardChip card={card} onPreview={setPreviewName} />
-                        {i < cards.length - 1 && <span className="text-slate-600 ml-0.5">,</span>}
+                        {i < cards.length - 1 && <span className="text-slate-600 ml-1">,</span>}
                       </span>
                     ))}
                   </div>

@@ -42,6 +42,7 @@ export interface Comment {
   authorPhotoURL: string
   resolution: CommentResolution
   createdAt: Timestamp
+  updatedAt?: Timestamp
 }
 
 // ── Reviews (new persistent collaborative model) ────────────────────────────

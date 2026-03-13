@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, Link } from '../lib/router'
+import { useParams, useSearchParams, Link } from '../lib/router'
 import { getCachedReview, setCachedReview } from '../lib/reviewCache'
 import { Helmet } from 'react-helmet-async'
 import {
@@ -17,6 +17,7 @@ import { SectionNav } from '../components/diff/SectionNav'
 import { DiffList } from '../components/diff/DiffList'
 import { ModeToggle } from '../components/diff/ModeToggle'
 import { ChangeModal } from '../components/diff/ChangeModal'
+import { PassModal } from '../components/diff/PassModal'
 import { EditChangeModal } from '../components/changes/EditChangeModal'
 import { SplitChangeModal } from '../components/changes/SplitChangeModal'
 import { ChangeCard } from '../components/changes/ChangeCard'
@@ -58,12 +59,14 @@ function ReviewWorkspace({
 }) {
   const { identity, setName } = useAuth()
   const { selectedLeft, selectedRight, clearSelection } = useEditMode()
+  const [searchParams] = useSearchParams()
   const [changes, setChanges] = useState<LiveChange[]>([])
   const [changesLoading, setChangesLoading] = useState(true)
-  const [mode, setMode] = useState<'edit' | 'view'>('edit')
+  const [mode, setMode] = useState<'edit' | 'view'>(searchParams.get('mode') === 'view' ? 'view' : 'edit')
   const [modalOpen, setModalOpen] = useState(false)
   const [keepModalOpen, setKeepModalOpen] = useState(false)
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
+  const [passModalOpen, setPassModalOpen] = useState(false)
   const [editingChange, setEditingChange] = useState<LiveChange | null>(null)
   const [splittingChange, setSplittingChange] = useState<LiveChange | null>(null)
   const [linkCopied, setLinkCopied] = useState(false)
@@ -90,6 +93,10 @@ function ReviewWorkspace({
     recordCubeCards(cubeAId, diffData.onlyA.map(c => c.name))
     recordCubeCards(cubeBId, diffData.onlyB.map(c => c.name))
   }, [cubeAId, cubeBId])
+
+  useEffect(() => {
+    if (mode === 'view') clearSelection()
+  }, [mode])
 
   const { imageMap, loadingSet } = useCardImages(sections, currentIndex)
   const currentLabel = sections[currentIndex]
@@ -403,6 +410,22 @@ function ReviewWorkspace({
     }
   }
 
+  async function handleEditComment(changeId: string, commentId: string, newBody: string) {
+    const c = changes.find(ch => ch.id === changeId)
+    if (!c) return
+    const updated = c.comments.map(cm =>
+      cm.id === commentId ? { ...cm, body: newBody, updatedAt: Timestamp.now() } : cm
+    )
+    try {
+      await updateDoc(changeDocRef(changeId), {
+        comments: cleanForFirestore(updated),
+      })
+      setActionError(null)
+    } catch (e) {
+      showActionError('The comment could not be updated. Please try again.', e)
+    }
+  }
+
   async function handleSetName() {
     const trimmed = nameInput.trim()
     if (!trimmed) return
@@ -443,6 +466,47 @@ function ReviewWorkspace({
       setActionError(null)
     } catch (e) {
       showActionError('Your display name changed locally, but older attributions could not be updated yet.', e)
+    }
+  }
+
+  async function handleSavePass(comment: string, unresolved: boolean) {
+    clearSelection()
+    const now = Timestamp.now()
+    const batch = writeBatch(db)
+
+    // Keep: left cards stay in the cube
+    const keepId = nanoid(8)
+    const keepChange: LiveChange = {
+      id: keepId, type: 'keep', cardsOut: selectedLeftCards, cardsIn: [],
+      initialComment: comment, authorId: identity.id, authorName: identity.displayName,
+      authorPhotoURL: identity.photoURL, unresolved, createdAt: now, comments: [],
+    }
+    batch.set(doc(db, 'reviews', reviewId, 'changes', keepId), cleanForFirestore(keepChange) as object)
+    batch.set(doc(eventsRef()), {
+      type: 'change_created', changeId: keepId,
+      authorId: identity.id, authorName: identity.displayName, createdAt: now,
+      payload: { change: cleanForFirestore(keepChange) },
+    })
+
+    // Reject: right cards are turned down
+    const rejectId = nanoid(8)
+    const rejectChange: LiveChange = {
+      id: rejectId, type: 'reject', cardsOut: [], cardsIn: selectedRightCards,
+      initialComment: comment, authorId: identity.id, authorName: identity.displayName,
+      authorPhotoURL: identity.photoURL, unresolved, createdAt: now, comments: [],
+    }
+    batch.set(doc(db, 'reviews', reviewId, 'changes', rejectId), cleanForFirestore(rejectChange) as object)
+    batch.set(doc(eventsRef()), {
+      type: 'change_created', changeId: rejectId,
+      authorId: identity.id, authorName: identity.displayName, createdAt: now,
+      payload: { change: cleanForFirestore(rejectChange) },
+    })
+
+    try {
+      await batch.commit()
+      setActionError(null)
+    } catch (e) {
+      showActionError('The pass could not be saved. Please try again.', e)
     }
   }
 
@@ -531,6 +595,8 @@ function ReviewWorkspace({
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
+  const resolvedCount = changes.filter(c => !c.unresolved).length
+
   return (
     <>
       <Helmet>
@@ -541,6 +607,11 @@ function ReviewWorkspace({
         {/* Header */}
         <header className="shrink-0 flex items-center gap-1.5 px-2 py-2 bg-slate-800 border-b border-slate-700 overflow-x-hidden">
           <ModeToggle mode={mode} onChange={setMode} />
+          {changes.length > 0 && (
+            <span className="hidden sm:inline text-xs text-slate-500 shrink-0 tabular-nums">
+              {resolvedCount}/{changes.length}
+            </span>
+          )}
           <SectionNav
             currentIndex={currentIndex}
             total={total}
@@ -569,6 +640,11 @@ function ReviewWorkspace({
               {hasRight && !hasLeft && (
                 <Button size="sm" variant="reject" onClick={() => setRejectModalOpen(true)}>
                   Reject
+                </Button>
+              )}
+              {hasLeft && hasRight && (
+                <Button size="sm" variant="pass" onClick={() => setPassModalOpen(true)} title="Keep left cards + reject right cards">
+                  Pass
                 </Button>
               )}
               <Button variant="ghost" size="sm" onClick={clearSelection}>✕</Button>
@@ -614,7 +690,7 @@ function ReviewWorkspace({
             {/* Name / avatar — always just the avatar button; editing opens a modal */}
             <button
               onClick={() => { setNameInput(identity.displayName === 'Reviewer' ? '' : identity.displayName); setEditingName(true) }}
-              className={`h-8 w-8 rounded-full flex items-center justify-center text-[11px] font-bold uppercase text-slate-200 transition-colors shrink-0 ${nameSaved ? 'avatar-saved' : ''} ${identity.displayName === 'Reviewer' ? 'bg-amber-700 hover:bg-amber-600 ring-2 ring-amber-500/50' : 'bg-slate-600 hover:bg-slate-500'}`}
+              className={`h-8 w-8 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 rounded-full flex items-center justify-center text-[11px] font-bold uppercase text-slate-200 transition-colors shrink-0 ${nameSaved ? 'avatar-saved' : ''} ${identity.displayName === 'Reviewer' ? 'bg-amber-700 hover:bg-amber-600 ring-2 ring-amber-500/50' : 'bg-slate-600 hover:bg-slate-500'}`}
               title={identity.displayName === 'Reviewer' ? 'Tap to set your name' : `Reviewing as ${identity.displayName} — tap to change`}
               aria-label={identity.displayName === 'Reviewer' ? 'Set your name' : `Your name: ${identity.displayName}. Tap to change.`}
             >
@@ -645,9 +721,9 @@ function ReviewWorkspace({
           </div>
         ) : mode === 'edit' ? (
           <div id="main-content" className="flex flex-col flex-1 min-h-0">
-            <DiffList sections={sections} imageMap={imageMap} loadingSet={loadingSet} changes={changes} />
+            <DiffList sections={sections} imageMap={imageMap} loadingSet={loadingSet} changes={changes} selectable={mode === 'edit'} />
             {hasSelection && (
-              <div className="md:hidden shrink-0 bg-slate-800 border-t border-slate-700 px-3 py-2 pb-safe flex items-center gap-2">
+              <div className="md:hidden sticky bottom-0 z-10 shrink-0 bg-slate-800 border-t border-slate-700 px-3 py-2 pb-safe flex items-center gap-2">
                 <Button
                   onClick={() => setModalOpen(true)}
                   size="sm"
@@ -661,6 +737,9 @@ function ReviewWorkspace({
                 )}
                 {hasRight && !hasLeft && (
                   <Button size="sm" variant="reject" onClick={() => setRejectModalOpen(true)}>Reject</Button>
+                )}
+                {hasLeft && hasRight && (
+                  <Button size="sm" variant="pass" onClick={() => setPassModalOpen(true)} title="Keep left cards + reject right cards">Pass</Button>
                 )}
                 <Button variant="ghost" size="sm" onClick={clearSelection} aria-label="Clear selection">✕</Button>
               </div>
@@ -695,7 +774,7 @@ function ReviewWorkspace({
                 if (!aM && bM) return 1
                 if (a.unresolved && !b.unresolved) return -1
                 if (!a.unresolved && b.unresolved) return 1
-                return 0
+                return (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0)
               })
               const diffCards = [
                 ...diffData.onlyA.map(c => c.name),
@@ -739,6 +818,7 @@ function ReviewWorkspace({
                       change={change}
                       onAddComment={(body, res) => handleAddComment(change.id, body, res)}
                       onSetCommentResolution={(commentId, res) => handleSetCommentResolution(change.id, commentId, res)}
+                      onEditComment={(commentId, newBody) => handleEditComment(change.id, commentId, newBody)}
                       onEdit={() => setEditingChange(change)}
                       diffCards={diffCards}
                       reviewerNames={reviewerNames}
@@ -773,6 +853,13 @@ function ReviewWorkspace({
           selectedRightCards={selectedRightCards}
           onSave={handleSaveChange}
           forceType="reject"
+        />
+        <PassModal
+          open={passModalOpen}
+          onClose={() => setPassModalOpen(false)}
+          leftCards={selectedLeftCards}
+          rightCards={selectedRightCards}
+          onSave={handleSavePass}
         />
 
         {editingChange && (

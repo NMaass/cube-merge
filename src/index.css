@@ -26,7 +26,6 @@
   img {
     content-visibility: auto;
     contain-intrinsic-size: 180px 252px;
-    image-rendering: -webkit-optimize-contrast; /* Better rendering on webkit */
   }
 
   /* Reduce paint operations and improve compositing */

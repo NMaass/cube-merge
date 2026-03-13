@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { Textarea } from '../ui/Textarea'
+import { SuggestionMenu } from '../ui/SuggestionMenu'
+import { useAutocomplete } from '../../hooks/useAutocomplete'
 import { useAuth } from '../../context/AuthContext'
 import { useEditMode } from '../../context/EditModeContext'
 import { getCachedImage } from '../../lib/imageCache'
@@ -88,12 +90,20 @@ export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCar
 
   const type = forceType ?? actionType ?? 'add'
 
+  const diffCardNames = [
+    ...selectedLeftCards.map(c => c.name),
+    ...selectedRightCards.map(c => c.name),
+  ]
+  const { textareaRef, suggestions, anchor, onTextareaChange, applySuggestion, dismiss } =
+    useAutocomplete({ diffCards: diffCardNames })
+
   // Reset transient state when modal closes
   useEffect(() => {
     if (!open) {
       setEditingAuthor(false)
       setAuthorInput('')
       setPreviewCard(null)
+      dismiss()
     }
   }, [open])
 
@@ -131,12 +141,24 @@ export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCar
             )}
         </div>
 
-        <Textarea
-          placeholder="Add a note (optional)..."
-          value={comment}
-          onChange={e => setComment(e.target.value)}
-          rows={3}
-        />
+        <div className="relative">
+          <Textarea
+            ref={textareaRef}
+            placeholder="Add a note (optional)… (/ for cards)"
+            value={comment}
+            onChange={e => {
+              setComment(e.target.value)
+              onTextareaChange(e.target.value, e.target.selectionStart ?? e.target.value.length)
+            }}
+            onKeyDown={e => { if (e.key === 'Escape' && suggestions.length > 0) dismiss() }}
+            rows={3}
+          />
+          <SuggestionMenu
+            suggestions={suggestions}
+            anchor={anchor}
+            onSelect={s => applySuggestion(s, comment, setComment)}
+          />
+        </div>
 
         <label className="flex items-center gap-2 cursor-pointer select-none">
           <input

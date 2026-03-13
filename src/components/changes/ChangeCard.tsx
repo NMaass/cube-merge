@@ -10,12 +10,13 @@ interface ChangeCardProps {
   change: Change & { comments: Comment[] }
   onAddComment?: (body: string, resolution: CommentResolution) => void
   onSetCommentResolution?: (commentId: string, resolution: CommentResolution) => void
+  onEditComment?: (commentId: string, newBody: string) => void
   onEdit?: () => void
   diffCards?: string[]
   reviewerNames?: string[]
 }
 
-export function ChangeCard({ change, onAddComment, onSetCommentResolution, onEdit, diffCards, reviewerNames }: ChangeCardProps) {
+export function ChangeCard({ change, onAddComment, onSetCommentResolution, onEditComment, onEdit, diffCards, reviewerNames }: ChangeCardProps) {
   const [expanded, setExpanded] = useState(false)
   const date = change.createdAt?.toDate?.()?.toLocaleDateString() || ''
   const commentCount = change.comments.length
@@ -91,6 +92,7 @@ export function ChangeCard({ change, onAddComment, onSetCommentResolution, onEdi
           comments={change.comments}
           onAddComment={onAddComment}
           onSetResolution={onSetCommentResolution}
+          onEditComment={onEditComment}
           diffCards={diffCards}
           reviewerNames={reviewerNames}
         />

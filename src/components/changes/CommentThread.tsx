@@ -6,11 +6,12 @@ interface CommentThreadProps {
   comments: Comment[]
   onAddComment?: (body: string, resolution: CommentResolution) => void
   onSetResolution?: (commentId: string, resolution: CommentResolution) => void
+  onEditComment?: (commentId: string, newBody: string) => void
   diffCards?: string[]
   reviewerNames?: string[]
 }
 
-export function CommentThread({ comments, onAddComment, onSetResolution, diffCards, reviewerNames }: CommentThreadProps) {
+export function CommentThread({ comments, onAddComment, onSetResolution, onEditComment, diffCards, reviewerNames }: CommentThreadProps) {
   return (
     <div className="mt-2 border-t border-slate-700 pt-2">
       {comments.map(comment => (
@@ -18,6 +19,7 @@ export function CommentThread({ comments, onAddComment, onSetResolution, diffCar
           key={comment.id}
           comment={comment}
           onSetResolution={onSetResolution ? (res) => onSetResolution(comment.id, res) : undefined}
+          onEdit={onEditComment ? (newBody) => onEditComment(comment.id, newBody) : undefined}
         />
       ))}
       {onAddComment && (

@@ -210,7 +210,7 @@ export default function ChangelogPage() {
         {/* Header */}
         <header className="shrink-0 flex items-center gap-3 px-4 py-3 bg-slate-800 border-b border-slate-700">
           <Link
-            to={`/c/${reviewId}`}
+            to={`/c/${reviewId}?mode=view`}
             className="flex items-center gap-1.5 text-slate-400 hover:text-slate-200 transition-colors"
             aria-label="Back to review"
           >
