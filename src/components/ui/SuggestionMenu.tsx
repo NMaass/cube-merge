@@ -13,16 +13,21 @@ export function SuggestionMenu({ suggestions, anchor, onSelect }: SuggestionMenu
   const vw = window.visualViewport?.width ?? window.innerWidth
   const left = Math.max(4, Math.min(anchor.left, vw - anchor.width - 4))
   const spaceBelow = vh - anchor.bottom - 8
+  const spaceAbove = anchor.top - 8
+  const MIN_HEIGHT = 80
+  const flipAbove = spaceBelow < MIN_HEIGHT && spaceAbove > spaceBelow
+  const posStyle = flipAbove
+    ? { bottom: vh - anchor.top + 4, maxHeight: Math.min(192, spaceAbove) }
+    : { top: anchor.bottom + 4, maxHeight: Math.min(192, spaceBelow) }
   return createPortal(
     <div
       role="listbox"
       aria-label="Suggestions"
       style={{
         position: 'fixed',
-        top: anchor.bottom + 4,
+        ...posStyle,
         left,
         width: anchor.width,
-        maxHeight: Math.min(192, spaceBelow),
         zIndex: 9999,
       }}
       className="bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-y-auto"
