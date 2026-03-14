@@ -19,6 +19,8 @@ interface ChangeModalProps {
   selectedRightCards: CubeCard[]
   onSave: (type: ChangeType, cardsOut: CubeCard[], cardsIn: CubeCard[], comment: string, unresolved: boolean) => void
   forceType?: ChangeType
+  allDiffCards?: string[]
+  reviewerNames?: string[]
 }
 
 const TYPE_TITLES: Record<ChangeType, string> = {
@@ -79,7 +81,7 @@ function PreviewableCardRow({ card, colorClass, prefix, onPreview }: {
   )
 }
 
-export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCards, onSave, forceType }: ChangeModalProps) {
+export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCards, onSave, forceType, allDiffCards, reviewerNames }: ChangeModalProps) {
   const { identity, setName } = useAuth()
   const { actionType, clearSelection } = useEditMode()
   const [comment, setComment] = useState('')
@@ -90,12 +92,12 @@ export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCar
 
   const type = forceType ?? actionType ?? 'add'
 
-  const diffCardNames = [
+  const diffCardNames = allDiffCards ?? [
     ...selectedLeftCards.map(c => c.name),
     ...selectedRightCards.map(c => c.name),
   ]
   const { textareaRef, suggestions, anchor, onTextareaChange, applySuggestion, dismiss } =
-    useAutocomplete({ diffCards: diffCardNames })
+    useAutocomplete({ diffCards: diffCardNames, reviewerNames })
 
   // Reset transient state when modal closes
   useEffect(() => {

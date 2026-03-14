@@ -19,12 +19,12 @@ interface CardListItemProps {
 }
 
 const ROW_CLASS: Record<CardState, string> = {
-  normal: 'border-l-2 border-transparent hover:bg-slate-700/30 cursor-pointer',
-  selected: 'border-l-2 border-amber-500 bg-amber-900/20 cursor-pointer',
-  accepted: 'border-l-2 border-green-500 bg-green-900/10 cursor-pointer opacity-80',
-  removed: 'border-l-2 border-red-500 bg-red-900/10 cursor-pointer opacity-80',
-  kept: 'border-l-2 border-teal-500 bg-teal-900/10 cursor-pointer opacity-80',
-  rejected: 'border-l-2 border-orange-500 bg-orange-900/10 cursor-pointer opacity-80',
+  normal: 'hover:bg-slate-700/30 cursor-pointer',
+  selected: 'bg-amber-900/20 cursor-pointer',
+  accepted: 'bg-green-900/10 cursor-pointer opacity-80',
+  removed: 'bg-red-900/10 cursor-pointer opacity-80',
+  kept: 'bg-teal-900/10 cursor-pointer opacity-80',
+  rejected: 'bg-orange-900/10 cursor-pointer opacity-80',
 }
 
 const NAME_CLASS: Record<CardState, string> = {
