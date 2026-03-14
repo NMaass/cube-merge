@@ -9,11 +9,12 @@ interface SectionNavProps {
   onGoTo: (index: number) => void
   findSection: (input: string) => number
   disabled?: boolean
+  sectionComplete?: boolean
 }
 
 export function SectionNav({
   currentIndex, total, currentLabel,
-  onPrev, onNext, onGoTo, findSection, disabled,
+  onPrev, onNext, onGoTo, findSection, disabled, sectionComplete,
 }: SectionNavProps) {
   const [value, setValue] = useState(currentLabel)
   const [editing, setEditing] = useState(false)
@@ -51,7 +52,7 @@ export function SectionNav({
     disabled:cursor-not-allowed text-slate-200 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500`
 
   return (
-    <div className={`flex items-center gap-1 shrink-0 ${disabled ? 'opacity-30 pointer-events-none' : ''}`}>
+    <div className={`flex items-center gap-1 min-w-0 ${disabled ? 'opacity-30 pointer-events-none' : ''}`}>
       <button 
         onClick={onPrev} 
         disabled={disabled || currentIndex === 0} 
@@ -73,7 +74,7 @@ export function SectionNav({
         title="Type a section (e.g. 3G, C4, Land, 6+W)"
         aria-label="Navigate to section"
         aria-describedby="section-nav-instructions"
-        className="h-auto min-h-[44px] sm:h-8 sm:min-h-0 w-16 sm:w-20 bg-slate-700 border border-slate-600 rounded px-1.5 text-sm font-mono text-slate-200 text-center focus:outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500"
+        className={`h-auto min-h-[44px] sm:h-8 sm:min-h-0 w-16 sm:w-20 bg-slate-700 border rounded px-1.5 text-sm font-mono text-slate-200 text-center focus:outline-none focus:ring-1 focus:border-transparent ${sectionComplete ? 'border-green-500 ring-1 ring-green-500 text-green-300' : 'border-slate-600 focus:ring-amber-500 focus:border-amber-500'}`}
         spellCheck={false}
       />
       <div id="section-nav-instructions" className="sr-only">

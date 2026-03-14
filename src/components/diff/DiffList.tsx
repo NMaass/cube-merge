@@ -11,6 +11,7 @@ interface DiffListProps {
   loadingSet: Set<string>
   changes: Array<Change & { comments: Comment[] }>
   selectable?: boolean
+  onCardInChangeClick?: (change: Change & { comments: Comment[] }) => void
 }
 
 const SectionHeader = memo(function SectionHeader({ section, side }: { section: Section; side: 'left' | 'right' }) {
@@ -35,7 +36,7 @@ const SectionHeader = memo(function SectionHeader({ section, side }: { section: 
   )
 })
 
-export const DiffList = memo(function DiffList({ sections, imageMap, loadingSet, changes, selectable = true }: DiffListProps) {
+export const DiffList = memo(function DiffList({ sections, imageMap, loadingSet, changes, selectable = true, onCardInChangeClick }: DiffListProps) {
   const { selectedLeft, selectedRight, toggleLeft, toggleRight } = useEditMode()
 
   const changeMap = useMemo(() => {
@@ -58,9 +59,15 @@ export const DiffList = memo(function DiffList({ sections, imageMap, loadingSet,
 
   const handleCardClick = useCallback((name: string, side: 'left' | 'right') => {
     if (!selectable) return
+    if (changeMap.has(name) && onCardInChangeClick) {
+      const ch = changes.find(c =>
+        c.cardsOut.some(x => x.name === name) || c.cardsIn.some(x => x.name === name)
+      )
+      if (ch) { onCardInChangeClick(ch); return }
+    }
     if (side === 'left') toggleLeft(name)
     else toggleRight(name)
-  }, [selectable, toggleLeft, toggleRight])
+  }, [selectable, changeMap, changes, onCardInChangeClick, toggleLeft, toggleRight])
 
   return (
     <div className="flex flex-col md:flex-row flex-1 min-h-0">

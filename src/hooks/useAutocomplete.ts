@@ -11,13 +11,13 @@ interface UseAutocompleteOptions {
 export function useAutocomplete({ diffCards = [], reviewerNames = [] }: UseAutocompleteOptions) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [triggerStart, setTriggerStart] = useState(-1)
-  const [anchor, setAnchor] = useState<{ top: number; left: number; width: number } | null>(null)
+  const [anchor, setAnchor] = useState<{ top: number; bottom: number; left: number; width: number } | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     if (suggestions.length > 0 && textareaRef.current) {
       const rect = textareaRef.current.getBoundingClientRect()
-      setAnchor({ top: rect.top, left: rect.left, width: rect.width })
+      setAnchor({ top: rect.top, bottom: rect.bottom, left: rect.left, width: rect.width })
     } else {
       setAnchor(null)
     }

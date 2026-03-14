@@ -597,6 +597,33 @@ function ReviewWorkspace({
 
   const resolvedCount = changes.filter(c => !c.unresolved).length
 
+  const allDiffCards = useMemo(() => [
+    ...diffData.onlyA.map(c => c.name),
+    ...diffData.onlyB.map(c => c.name),
+  ], [diffData])
+
+  const reviewerNames = useMemo(() => [...new Set([
+    ...changes.map(c => c.authorName).filter(Boolean),
+    ...(identity.displayName !== 'Reviewer' ? [identity.displayName] : []),
+  ])], [changes, identity.displayName])
+
+  const cardInChanges = useMemo(() => {
+    const s = new Set<string>()
+    for (const ch of changes) {
+      ch.cardsOut.forEach(c => s.add(c.name))
+      ch.cardsIn.forEach(c => s.add(c.name))
+    }
+    return s
+  }, [changes])
+
+  const isSectionComplete = useMemo(() => {
+    const sec = sections[currentIndex]
+    if (!sec) return false
+    const allCards = [...sec.cardsA, ...sec.cardsB]
+    if (allCards.length === 0) return false
+    return allCards.every(c => cardInChanges.has(c.name))
+  }, [sections, currentIndex, cardInChanges])
+
   return (
     <>
       <Helmet>
@@ -606,7 +633,7 @@ function ReviewWorkspace({
       <div className="h-dvh bg-slate-900 flex flex-col overflow-hidden">
         {/* Header */}
         <header className="shrink-0 flex items-center gap-1.5 px-2 py-2 bg-slate-800 border-b border-slate-700 overflow-x-hidden">
-          <ModeToggle mode={mode} onChange={setMode} />
+          <ModeToggle mode={mode} onChange={(newMode) => { setMode(newMode); setEditingChange(null) }} />
           {changes.length > 0 && (
             <span className="hidden sm:inline text-xs text-slate-500 shrink-0 tabular-nums">
               {resolvedCount}/{changes.length}
@@ -621,6 +648,7 @@ function ReviewWorkspace({
             onGoTo={goTo}
             findSection={findSection}
             disabled={mode === 'view'}
+            sectionComplete={isSectionComplete}
           />
 
           {mode === 'edit' && hasSelection && (
@@ -721,7 +749,7 @@ function ReviewWorkspace({
           </div>
         ) : mode === 'edit' ? (
           <div id="main-content" className="flex flex-col flex-1 min-h-0">
-            <DiffList sections={sections} imageMap={imageMap} loadingSet={loadingSet} changes={changes} selectable={mode === 'edit'} />
+            <DiffList sections={sections} imageMap={imageMap} loadingSet={loadingSet} changes={changes} selectable={mode === 'edit'} onCardInChangeClick={(ch) => setEditingChange(ch)} />
             {hasSelection && (
               <div className="lg:hidden sticky bottom-0 z-10 shrink-0 bg-slate-800 border-t border-slate-700 px-3 py-2 pb-safe flex items-center gap-2">
                 <Button
@@ -767,7 +795,7 @@ function ReviewWorkspace({
               const myMention = `@${identity.displayName}`
               const hasMention = (c: LiveChange) =>
                 identity.displayName !== 'Reviewer' &&
-                c.comments.some(cm => cm.body.includes(myMention))
+                c.comments.some(cm => cm.body.toLowerCase().includes(myMention.toLowerCase()))
               const sorted = [...changes].sort((a, b) => {
                 const aM = hasMention(a), bM = hasMention(b)
                 if (aM && !bM) return -1
@@ -776,11 +804,6 @@ function ReviewWorkspace({
                 if (!a.unresolved && b.unresolved) return 1
                 return (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0)
               })
-              const diffCards = [
-                ...diffData.onlyA.map(c => c.name),
-                ...diffData.onlyB.map(c => c.name),
-              ]
-              const reviewerNames = [...new Set(changes.map(c => c.authorName).filter(Boolean))]
               return (
                 <>
                   <div className="flex items-center gap-6 px-2 py-3 mb-1 border-b border-slate-700/60">
@@ -820,7 +843,7 @@ function ReviewWorkspace({
                       onSetCommentResolution={(commentId, res) => handleSetCommentResolution(change.id, commentId, res)}
                       onEditComment={(commentId, newBody) => handleEditComment(change.id, commentId, newBody)}
                       onEdit={() => setEditingChange(change)}
-                      diffCards={diffCards}
+                      diffCards={allDiffCards}
                       reviewerNames={reviewerNames}
                     />
                   ))}
@@ -837,6 +860,8 @@ function ReviewWorkspace({
           selectedLeftCards={selectedLeftCards}
           selectedRightCards={selectedRightCards}
           onSave={handleSaveChange}
+          allDiffCards={allDiffCards}
+          reviewerNames={reviewerNames}
         />
         <ChangeModal
           open={keepModalOpen}
@@ -845,6 +870,8 @@ function ReviewWorkspace({
           selectedRightCards={selectedRightCards}
           onSave={handleSaveChange}
           forceType="keep"
+          allDiffCards={allDiffCards}
+          reviewerNames={reviewerNames}
         />
         <ChangeModal
           open={rejectModalOpen}
@@ -853,6 +880,8 @@ function ReviewWorkspace({
           selectedRightCards={selectedRightCards}
           onSave={handleSaveChange}
           forceType="reject"
+          allDiffCards={allDiffCards}
+          reviewerNames={reviewerNames}
         />
         <PassModal
           open={passModalOpen}

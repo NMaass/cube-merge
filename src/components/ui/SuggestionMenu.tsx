@@ -3,7 +3,7 @@ import { Suggestion } from '../../hooks/useAutocomplete'
 
 interface SuggestionMenuProps {
   suggestions: Suggestion[]
-  anchor: { top: number; left: number; width: number } | null
+  anchor: { top: number; bottom: number; left: number; width: number } | null
   onSelect: (s: Suggestion) => void
 }
 
@@ -12,17 +12,22 @@ export function SuggestionMenu({ suggestions, anchor, onSelect }: SuggestionMenu
   const vh = window.visualViewport?.height ?? window.innerHeight
   const vw = window.visualViewport?.width ?? window.innerWidth
   const left = Math.max(4, Math.min(anchor.left, vw - anchor.width - 4))
+  const spaceBelow = vh - anchor.bottom - 8
   const spaceAbove = anchor.top - 8
+  const MIN_HEIGHT = 80
+  const flipAbove = spaceBelow < MIN_HEIGHT && spaceAbove > spaceBelow
+  const posStyle = flipAbove
+    ? { bottom: vh - anchor.top + 4, maxHeight: Math.min(192, spaceAbove) }
+    : { top: anchor.bottom + 4, maxHeight: Math.min(192, spaceBelow) }
   return createPortal(
     <div
       role="listbox"
       aria-label="Suggestions"
       style={{
         position: 'fixed',
-        bottom: `calc(${vh}px - ${anchor.top}px + 4px)`,
+        ...posStyle,
         left,
         width: anchor.width,
-        maxHeight: Math.min(192, spaceAbove),
         zIndex: 9999,
       }}
       className="bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-y-auto"
