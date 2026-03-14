@@ -2,7 +2,7 @@
 
 A collaborative review tool for Magic: The Gathering cube curators. Compare two cube lists side-by-side, annotate proposed changes, and work with your playgroup in real-time — no accounts required.
 
-**[→ Try it live]([(https://cube-merge.pages.dev/c/JKVqdH1964)])**
+**[→ Try it live](https://cube-merge.pages.dev/c/JKVqdH1964)**
 
 ## What it does
 
