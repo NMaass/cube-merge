@@ -62,9 +62,9 @@ export function SplitChangeModal({ open, onClose, change, onSplit }: SplitChange
                   type="checkbox"
                   checked={splitOut.has(c.name)}
                   onChange={() => setSplitOut(prev => toggle(prev, c.name))}
-                  className="w-3.5 h-3.5 rounded accent-blue-500 shrink-0"
+                  className="w-3.5 h-3.5 rounded accent-amber-500 shrink-0"
                 />
-                <span className={`text-sm ${change.type === 'keep' ? 'text-cyan-300' : 'text-red-300'}`}>{c.name}</span>
+                <span className={`text-sm ${change.type === 'keep' ? 'text-teal-300' : 'text-red-300'}`}>{c.name}</span>
               </label>
             ))}
           </div>
@@ -79,7 +79,7 @@ export function SplitChangeModal({ open, onClose, change, onSplit }: SplitChange
                   type="checkbox"
                   checked={splitIn.has(c.name)}
                   onChange={() => setSplitIn(prev => toggle(prev, c.name))}
-                  className="w-3.5 h-3.5 rounded accent-blue-500 shrink-0"
+                  className="w-3.5 h-3.5 rounded accent-amber-500 shrink-0"
                 />
                 <span className="text-sm text-green-300">{c.name}</span>
               </label>

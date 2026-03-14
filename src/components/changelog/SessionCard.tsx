@@ -74,7 +74,7 @@ export function SessionCard({ session, checked, onToggle, index }: SessionCardPr
           type="checkbox"
           checked={checked}
           onChange={onToggle}
-          className="w-4 h-4 rounded accent-blue-500 cursor-pointer shrink-0"
+          className="w-4 h-4 rounded accent-amber-500 cursor-pointer shrink-0"
           aria-label={`Include session ${index + 1}`}
         />
         <div className="w-7 h-7 rounded-full bg-slate-600 flex items-center justify-center text-xs font-bold text-slate-200 shrink-0">

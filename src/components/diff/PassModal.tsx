@@ -34,7 +34,7 @@ export function PassModal({ open, onClose, leftCards, rightCards, onSave }: Pass
         {/* Card summary: keep left, reject right */}
         <div className="bg-slate-700/50 rounded-lg p-3 space-y-0.5">
           {leftCards.map(c => (
-            <p key={c.name} className="text-sm py-0.5 text-cyan-300 select-none">↺ {c.name}</p>
+            <p key={c.name} className="text-sm py-0.5 text-teal-300 select-none">↺ {c.name}</p>
           ))}
           {leftCards.length > 0 && rightCards.length > 0 && (
             <div className="border-t border-slate-600/60 my-1" />
@@ -45,7 +45,7 @@ export function PassModal({ open, onClose, leftCards, rightCards, onSave }: Pass
         </div>
 
         <p className="text-xs text-slate-500 -mt-1">
-          Left cards will be marked as <span className="text-cyan-400">kept</span>; right cards as <span className="text-orange-400">rejected</span>.
+          Left cards will be marked as <span className="text-teal-400">kept</span>; right cards as <span className="text-orange-400">rejected</span>.
         </p>
 
         <Textarea

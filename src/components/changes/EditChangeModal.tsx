@@ -42,7 +42,7 @@ function CardSearch({ label, candidates, onAdd }: CardSearchProps) {
         onChange={e => { setQuery(e.target.value); setOpen(true) }}
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), BLUR_DISMISS_DELAY_MS)}
-        className="w-full bg-slate-700/60 border border-slate-600 rounded px-2 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="w-full bg-slate-700/60 border border-slate-600 rounded px-2 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
       />
       {open && matches.length > 0 && (
         <div role="listbox" aria-label={`${label} suggestions`} className="absolute z-50 w-full mt-0.5 bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-hidden">
@@ -110,7 +110,7 @@ export function EditChangeModal({ open, onClose, change, allCardsA, allCardsB, o
           <div className="space-y-1">
             {cardsOut.map(c => (
               <div key={c.name} className="flex items-center justify-between bg-slate-700/40 rounded px-2 py-1">
-                <span className={`text-xs ${change.type === 'keep' ? 'text-cyan-400' : 'text-red-400'}`}>{c.name}</span>
+                <span className={`text-xs ${change.type === 'keep' ? 'text-teal-400' : 'text-red-400'}`}>{c.name}</span>
                 <button
                   onClick={() => setCardsOut(prev => prev.filter(x => x.name !== c.name))}
                   className="text-slate-500 hover:text-red-400 transition-colors text-xs ml-2"
@@ -163,9 +163,9 @@ export function EditChangeModal({ open, onClose, change, allCardsA, allCardsB, o
           <div className="pt-1 border-t border-slate-700/60">
             <button
               onClick={() => { onClose(); onSplit() }}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-slate-700/50 hover:bg-slate-700 border border-slate-600/40 hover:border-slate-500 text-sm text-slate-300 hover:text-white transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-slate-700/50 hover:bg-slate-700 border border-slate-600/40 hover:border-slate-500 text-sm text-slate-300 hover:text-white transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
             >
-              <svg className="w-4 h-4 text-slate-500 group-hover:text-blue-400 transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <svg className="w-4 h-4 text-slate-500 group-hover:text-amber-400 transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h4m0 0V3m0 4l-4 4m8-4h-4m0 0V3m0 4l4 4M8 17H4m4 0v4m0-4l-4-4m12 4h4m-4 0v4m0-4l4-4" />
               </svg>
               <span>Split into two changes</span>

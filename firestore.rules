@@ -37,13 +37,37 @@ service cloud.firestore {
     // Reviews: public read/create; no update/delete on doc (immutable metadata)
     match /reviews/{reviewId} {
       allow read: if true;
-      allow create: if true;
+      allow create: if
+        // Required fields present
+        request.resource.data.keys().hasAll(['cubeAId', 'cubeBId', 'title', 'rawData', 'createdAt'])
+        // No extra fields beyond the known schema
+        && request.resource.data.keys().hasOnly(['cubeAId', 'cubeBId', 'title', 'rawData', 'createdAt', 'id', 'parentReviewId'])
+        // Server-side timestamp only — prevents fake/backdated timestamps
+        && request.resource.data.createdAt == request.time
+        // Size limits
+        && request.resource.data.title is string
+        && request.resource.data.title.size() <= 500
+        && request.resource.data.cubeAId is string
+        && request.resource.data.cubeAId.size() <= 200
+        && request.resource.data.cubeBId is string
+        && request.resource.data.cubeBId.size() <= 200;
       allow update, delete: if false;
 
       // Changes: read/create/update (soft-delete via update); no hard delete
       match /changes/{changeId} {
         allow read: if true;
-        allow create: if true;
+        allow create: if
+          // Required fields present
+          request.resource.data.keys().hasAll(['type', 'cardsIn', 'cardsOut', 'initialComment', 'authorId', 'authorName', 'authorPhotoURL', 'createdAt', 'comments'])
+          // No extra fields beyond the known schema
+          && request.resource.data.keys().hasOnly(['type', 'cardsIn', 'cardsOut', 'initialComment', 'authorId', 'authorName', 'authorPhotoURL', 'createdAt', 'comments', 'unresolved', 'id'])
+          // Size limits
+          && request.resource.data.initialComment is string
+          && request.resource.data.initialComment.size() <= 2000
+          && request.resource.data.authorName is string
+          && request.resource.data.authorName.size() <= 100
+          && request.resource.data.cardsIn.size() <= 100
+          && request.resource.data.cardsOut.size() <= 100;
         allow update: if true;
         allow delete: if false;
       }
@@ -51,7 +75,14 @@ service cloud.firestore {
       // Events: append-only log; no update or delete
       match /events/{eventId} {
         allow read: if true;
-        allow create: if true;
+        allow create: if
+          // Required fields present
+          request.resource.data.keys().hasAll(['type', 'changeId', 'authorId', 'authorName', 'createdAt', 'payload'])
+          // No extra fields beyond the known schema
+          && request.resource.data.keys().hasOnly(['type', 'changeId', 'authorId', 'authorName', 'createdAt', 'payload'])
+          // Size limits
+          && request.resource.data.authorName is string
+          && request.resource.data.authorName.size() <= 100;
         allow update, delete: if false;
       }
     }

@@ -60,7 +60,7 @@ export default function SnapshotView() {
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="text-center space-y-3">
           <p className="text-slate-300 text-lg">Snapshot not found</p>
-          <Link to="/" className="text-blue-400 hover:text-blue-300 text-sm">← Go home</Link>
+          <Link to="/" className="text-amber-400 hover:text-amber-300 text-sm">← Go home</Link>
         </div>
       </div>
     )

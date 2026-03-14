@@ -9,18 +9,23 @@ interface SuggestionMenuProps {
 
 export function SuggestionMenu({ suggestions, anchor, onSelect }: SuggestionMenuProps) {
   if (!anchor || suggestions.length === 0) return null
+  const vh = window.visualViewport?.height ?? window.innerHeight
+  const vw = window.visualViewport?.width ?? window.innerWidth
+  const left = Math.max(4, Math.min(anchor.left, vw - anchor.width - 4))
+  const spaceAbove = anchor.top - 8
   return createPortal(
     <div
       role="listbox"
       aria-label="Suggestions"
       style={{
         position: 'fixed',
-        bottom: `calc(100vh - ${anchor.top}px + 4px)`,
-        left: anchor.left,
+        bottom: `calc(${vh}px - ${anchor.top}px + 4px)`,
+        left,
         width: anchor.width,
+        maxHeight: Math.min(192, spaceAbove),
         zIndex: 9999,
       }}
-      className="bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-y-auto max-h-48"
+      className="bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-y-auto"
     >
       {suggestions.map((s, i) => (
         <button

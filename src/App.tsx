@@ -50,7 +50,7 @@ function LoadingScreen() {
     <div className="min-h-screen bg-slate-900 flex items-center justify-center">
       <div className="flex flex-col items-center gap-3">
         <div
-          className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"
+          className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"
           role="status"
           aria-label="Loading application"
         />
@@ -81,7 +81,7 @@ function App() {
         <WebApplicationStructuredData />
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[200] focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded-lg focus:text-sm focus:outline-none"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[200] focus:px-4 focus:py-2 focus:bg-amber-500 focus:text-slate-900 focus:rounded-lg focus:text-sm focus:outline-none"
         >
           Skip to main content
         </a>

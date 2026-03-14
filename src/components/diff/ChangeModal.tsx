@@ -53,7 +53,7 @@ function PreviewableCardRow({ card, colorClass, prefix, onPreview }: {
     <>
       <button
         type="button"
-        className={`w-full text-left text-sm py-1 select-none ${imageUrl ? 'cursor-pointer hover:opacity-80 active:opacity-60' : 'cursor-default'} ${colorClass} focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 rounded`}
+        className={`w-full text-left text-sm py-1 select-none ${imageUrl ? 'cursor-pointer hover:opacity-80 active:opacity-60' : 'cursor-default'} ${colorClass} focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500 rounded`}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setHoverPos(null)}
         onClick={() => imageUrl && onPreview(card)}
@@ -127,7 +127,7 @@ export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCar
               ))
             : forceType === 'keep'
             ? selectedLeftCards.map(c => (
-                <PreviewableCardRow key={c.name} card={c} colorClass="text-cyan-300" prefix="↺" onPreview={setPreviewCard} />
+                <PreviewableCardRow key={c.name} card={c} colorClass="text-teal-300" prefix="↺" onPreview={setPreviewCard} />
               ))
             : (
               <>
@@ -150,7 +150,7 @@ export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCar
               setComment(e.target.value)
               onTextareaChange(e.target.value, e.target.selectionStart ?? e.target.value.length)
             }}
-            onKeyDown={e => { if (e.key === 'Escape' && suggestions.length > 0) dismiss() }}
+            onKeyDown={e => { if (e.key === 'Escape' && suggestions.length > 0) { e.stopPropagation(); dismiss() } }}
             rows={3}
           />
           <SuggestionMenu
@@ -189,12 +189,12 @@ export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCar
                 onKeyDown={e => { if (e.key === 'Escape') setEditingAuthor(false) }}
                 placeholder="Your name"
                 aria-label="Your display name"
-                className="h-8 w-28 bg-slate-700 border border-slate-600 rounded px-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="h-8 w-28 bg-slate-700 border border-slate-600 rounded px-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
               />
               <button
                 type="submit"
                 disabled={!authorInput.trim()}
-                className="px-2 py-1 text-xs text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+                className="px-2 py-1 text-xs text-amber-400 hover:text-amber-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
               >
                 Save
               </button>
@@ -211,7 +211,7 @@ export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCar
             <button
               type="button"
               onClick={() => { setAuthorInput(identity.displayName === 'Reviewer' ? '' : identity.displayName); setEditingAuthor(true) }}
-              className="text-xs text-slate-400 hover:text-slate-200 transition-colors rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+              className="text-xs text-slate-400 hover:text-slate-200 transition-colors rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
               aria-label={`Posting as ${identity.displayName} — click to change name`}
             >
               as <strong className="text-slate-300">{identity.displayName}</strong>

@@ -35,7 +35,7 @@ function CardRow({ card, symbol, nameClass, symbolClass, onPreview }: {
   return (
     <>
       <button
-        className={`w-full flex items-center gap-2 px-1.5 py-1 text-left cursor-pointer hover:bg-slate-700/40 active:bg-slate-700/60 rounded-md transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500`}
+        className={`w-full flex items-center gap-2 px-1.5 py-1 text-left cursor-pointer hover:bg-slate-700/40 active:bg-slate-700/60 rounded-md transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500`}
         onClick={onPreview}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setHoverPos(null)}
@@ -73,7 +73,7 @@ export function CardInOutDisplay({ cardsIn, cardsOut, type }: CardInOutDisplayPr
   const rows = type === 'keep'
     ? cardsOut.map(c => (
         <CardRow key={c.name} card={c}
-          symbol="↺" nameClass="text-cyan-300" symbolClass="bg-cyan-900/60 text-cyan-400"
+          symbol="↺" nameClass="text-teal-300" symbolClass="bg-teal-900/60 text-teal-400"
           onPreview={preview(c)}
         />
       ))

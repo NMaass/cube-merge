@@ -88,12 +88,12 @@ export function CommentComposer({ onSubmit, diffCards = [], reviewerNames = [] }
               onKeyDown={e => { if (e.key === 'Escape') setEditingAuthor(false) }}
               placeholder="Your name"
               aria-label="Your display name"
-              className="h-8 w-28 bg-slate-700 border border-slate-600 rounded px-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="h-8 w-28 bg-slate-700 border border-slate-600 rounded px-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
             />
             <button
               type="submit"
               disabled={!authorInput.trim()}
-              className="px-2 py-1 text-xs text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+              className="px-2 py-1 text-xs text-amber-400 hover:text-amber-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
             >
               Save
             </button>
@@ -110,7 +110,7 @@ export function CommentComposer({ onSubmit, diffCards = [], reviewerNames = [] }
           <button
             type="button"
             onClick={() => { setAuthorInput(identity.displayName === 'Reviewer' ? '' : identity.displayName); setEditingAuthor(true) }}
-            className="text-xs text-slate-400 ml-auto hover:text-slate-200 transition-colors rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+            className="text-xs text-slate-400 ml-auto hover:text-slate-200 transition-colors rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
             aria-label={`Posting as ${identity.displayName} — click to change name`}
           >
             as <strong className="text-slate-200 font-semibold">{identity.displayName}</strong>

@@ -19,7 +19,7 @@ export function CardChip({ card, state, imageUrl, onClick }: CardChipProps) {
 
   const stateClasses: Record<CardState, string> = {
     normal: 'bg-transparent border border-slate-500 text-slate-300 hover:border-slate-300 hover:text-white',
-    selected: 'bg-blue-600 border border-blue-500 text-white',
+    selected: 'bg-amber-500 border border-amber-400 text-slate-900',
     accepted: 'bg-transparent border border-green-500 text-green-300 cursor-default',
     removed: 'bg-transparent border border-red-500 text-red-300 cursor-default',
   }

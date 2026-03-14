@@ -11,6 +11,7 @@
     background-color: #0f172a;
     color: #f1f5f9;
     margin: 0;
+    scrollbar-gutter: stable; /* reserve scrollbar space so modals don't cause layout shift */
   }
 
   /* Smooth transitions for interactive state changes */

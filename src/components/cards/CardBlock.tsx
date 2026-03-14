@@ -18,7 +18,7 @@ export const CardBlock = memo(function CardBlock({ card, state, imageUrl, onTogg
 
   const stateClasses: Record<CardState, string> = {
     normal: 'border-slate-600 text-slate-300',
-    selected: 'border-blue-500 bg-blue-900/30 text-white',
+    selected: 'border-amber-500 bg-amber-900/20 text-amber-200',
     accepted: 'border-green-600 text-green-300',
     removed: 'border-red-600 text-red-300',
   }
