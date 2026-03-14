@@ -445,7 +445,7 @@ export function ReviewWorkspace({
                   onKeyDown={e => { if (e.key === 'Enter') handleSetName(); if (e.key === 'Escape') setEditingName(false) }}
                   placeholder="Your name"
                   aria-label="Your display name"
-                  className="h-8 w-24 bg-slate-700 border border-slate-600 rounded px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="h-8 w-24 bg-slate-700 border border-slate-600 rounded px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
                 <Button size="sm" onClick={handleSetName} aria-label="Confirm name">✓</Button>
               </div>
@@ -737,7 +737,7 @@ export default function NewReviewPage() {
             <p className="text-sm text-slate-400">
               Check that both IDs are correct and the cubes are public on CubeCobra.
             </p>
-            <a href="/" className="text-blue-400 hover:text-blue-300 text-sm">← Go back</a>
+            <a href="/" className="text-amber-400 hover:text-amber-300 text-sm">← Go back</a>
           </div>
         ) : errorKind === 'CORS_BLOCKED' ? (
           <div className="space-y-4">
@@ -756,7 +756,7 @@ export default function NewReviewPage() {
                 placeholder="Paste Cube A JSON here…"
                 value={manualJsonA}
                 onChange={e => setManualJsonA(e.target.value)}
-                className="w-full h-24 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full h-24 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
               />
               <a href={`https://cubecobra.com/cube/api/cubeJSON/${cubeBId}`} target="_blank" rel="noreferrer"
                 className="block text-xs text-blue-400 hover:underline font-mono">
@@ -766,7 +766,7 @@ export default function NewReviewPage() {
                 placeholder="Paste Cube B JSON here…"
                 value={manualJsonB}
                 onChange={e => setManualJsonB(e.target.value)}
-                className="w-full h-24 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full h-24 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
               />
               <Button onClick={handleManualParse} className="w-full">Parse & Open Review</Button>
             </div>

@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from '../lib/router'
 import { Helmet } from 'react-helmet-async'
 import {
   doc, collection, getDoc, getDocs, setDoc, writeBatch,
-  orderBy, query, Timestamp,
+  orderBy, query, Timestamp, serverTimestamp,
 } from 'firebase/firestore/lite'
 import { nanoid } from 'nanoid'
 import { db } from '../lib/firebase-lite'
@@ -108,15 +108,17 @@ export default function ChangelogPage() {
       const now = Timestamp.now()
 
       // Create the new review doc
-      await setDoc(doc(db, 'reviews', newReviewId), cleanForFirestore({
-        id: newReviewId,
-        cubeAId: review.cubeAId,
-        cubeBId: review.cubeBId,
-        title: review.title,
-        rawData: review.rawData,
-        createdAt: now,
-        parentReviewId: reviewId,
-      }) as object)
+      await setDoc(doc(db, 'reviews', newReviewId), {
+        ...(cleanForFirestore({
+          id: newReviewId,
+          cubeAId: review.cubeAId,
+          cubeBId: review.cubeBId,
+          title: review.title,
+          rawData: review.rawData,
+          parentReviewId: reviewId,
+        }) as object),
+        createdAt: serverTimestamp(),
+      })
 
       if (branchChanges.length > 0) {
         const batch = writeBatch(db)
@@ -191,7 +193,7 @@ export default function ChangelogPage() {
       <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
         <div className="text-center space-y-3">
           <p className="text-slate-300 font-medium">Review not found</p>
-          <Link to="/" className="text-blue-400 hover:text-blue-300 text-sm">← Start a new review</Link>
+          <Link to="/" className="text-amber-400 hover:text-amber-300 text-sm">← Start a new review</Link>
         </div>
       </div>
     )
@@ -211,7 +213,7 @@ export default function ChangelogPage() {
         <header className="shrink-0 flex items-center gap-3 px-4 py-3 bg-slate-800 border-b border-slate-700">
           <Link
             to={`/c/${reviewId}?mode=view`}
-            className="flex items-center gap-1.5 text-slate-400 hover:text-slate-200 transition-colors"
+            className="flex items-center gap-1.5 p-1 -ml-1 rounded text-slate-400 hover:text-slate-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800"
             aria-label="Back to review"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -257,7 +259,7 @@ export default function ChangelogPage() {
                   <button
                     onClick={() => setSelectedSessions(new Set(sessions.map(s => s.key)))}
                     disabled={allSelected}
-                    className="text-xs text-blue-400 hover:text-blue-300 disabled:opacity-40 disabled:cursor-default transition-colors"
+                    className="text-xs text-amber-400 hover:text-amber-300 disabled:opacity-40 disabled:cursor-default transition-colors"
                   >
                     Select all
                   </button>

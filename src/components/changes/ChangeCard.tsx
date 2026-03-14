@@ -70,7 +70,7 @@ export function ChangeCard({ change, onAddComment, onSetCommentResolution, onEdi
         <button
           onClick={() => setExpanded(!expanded)}
           aria-expanded={expanded}
-          className="inline-flex w-full md:w-auto items-center justify-center md:justify-start gap-1.5 min-h-11 px-3 md:px-2.5 py-2 md:py-1 rounded-lg md:rounded-full bg-slate-700/60 hover:bg-slate-700 border border-slate-600/60 hover:border-slate-500 text-sm md:text-xs text-slate-300 md:text-slate-400 hover:text-slate-100 md:hover:text-slate-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="inline-flex w-full md:w-auto items-center justify-center md:justify-start gap-1.5 min-h-11 px-3 md:px-2.5 py-2 md:py-1 rounded-lg md:rounded-full bg-slate-700/60 hover:bg-slate-700 border border-slate-600/60 hover:border-slate-500 text-sm md:text-xs text-slate-300 md:text-slate-400 hover:text-slate-100 md:hover:text-slate-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
         >
           <svg className="w-4 h-4 md:w-3 md:h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />

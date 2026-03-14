@@ -79,21 +79,23 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
       <div
         ref={panelRef}
         tabIndex={-1}
-        className="relative bg-slate-800 rounded-xl shadow-2xl w-full max-w-md mx-4 px-4 py-4 sm:p-6 focus:outline-none"
+        className="relative bg-slate-800 rounded-xl shadow-2xl w-full max-w-md mx-4 flex flex-col max-h-[calc(100dvh-2rem)] focus:outline-none"
       >
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between px-4 pt-4 sm:px-6 sm:pt-6 mb-4 shrink-0">
           <h2 id={titleId} className="text-lg font-semibold text-white">{title}</h2>
           <button
             onClick={onClose}
             aria-label="Close dialog"
-            className="text-slate-400 hover:text-white transition-colors p-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800"
+            className="text-slate-400 hover:text-white transition-colors p-1 rounded focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-slate-800"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        {children}
+        <div className="overflow-y-auto px-4 pb-4 sm:px-6 sm:pb-6">
+          {children}
+        </div>
       </div>
     </div>
   )

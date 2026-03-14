@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Comment, CommentResolution } from '../../types/firestore'
 import { getCachedImage } from '../../lib/imageCache'
@@ -14,6 +14,7 @@ interface CommentItemProps {
 function CommentBody({ body }: { body: string }) {
   const [hoverPos, setHoverPos] = useState<{ top: number; left: number } | null>(null)
   const [hoverCard, setHoverCard] = useState<string | null>(null)
+  const rafRef = useRef<number | null>(null)
 
   // Parse [[Card Name]] mentions
   const segments: Array<{ text: string; isCard?: boolean }> = []
@@ -29,15 +30,20 @@ function CommentBody({ body }: { body: string }) {
   if (last < body.length) segments.push({ text: body.slice(last) })
 
   function handleCardMouseMove(e: React.MouseEvent, name: string) {
-    const imgW = 180
-    const imgH = 252
-    let left = e.clientX + 20
-    let top = e.clientY - imgH / 2
-    if (left + imgW > window.innerWidth - 8) left = e.clientX - imgW - 20
-    if (top < 8) top = 8
-    if (top + imgH > window.innerHeight - 8) top = window.innerHeight - imgH - 8
-    setHoverPos({ top, left })
-    setHoverCard(name)
+    if (rafRef.current !== null) return
+    const x = e.clientX, y = e.clientY
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null
+      const imgW = 180
+      const imgH = 252
+      let left = x + 20
+      let top = y - imgH / 2
+      if (left + imgW > window.innerWidth - 8) left = x - imgW - 20
+      if (top < 8) top = 8
+      if (top + imgH > window.innerHeight - 8) top = window.innerHeight - imgH - 8
+      setHoverPos({ top, left })
+      setHoverCard(name)
+    })
   }
 
   return (
@@ -50,7 +56,11 @@ function CommentBody({ body }: { body: string }) {
               key={i}
               className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-slate-700 text-amber-300 text-xs font-medium cursor-default hover:bg-slate-600 transition-colors"
               onMouseMove={e => handleCardMouseMove(e, seg.text)}
-              onMouseLeave={() => { setHoverPos(null); setHoverCard(null) }}
+              onMouseLeave={() => {
+                if (rafRef.current !== null) { cancelAnimationFrame(rafRef.current); rafRef.current = null }
+                setHoverPos(null)
+                setHoverCard(null)
+              }}
             >
               <svg className="w-2.5 h-2.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7l9-4 9 4M3 7v10l9 4 9-4V7" /></svg>
               {seg.text}
@@ -126,7 +136,7 @@ export function CommentItem({ comment, onSetResolution, onEdit }: CommentItemPro
             {canEdit && !editing && (
               <button
                 onClick={startEdit}
-                className="p-1.5 text-slate-600 hover:text-slate-400 transition-colors rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+                className="p-1.5 text-slate-600 hover:text-slate-400 transition-colors rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
                 aria-label="Edit comment"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -137,7 +147,7 @@ export function CommentItem({ comment, onSetResolution, onEdit }: CommentItemPro
             {onSetResolution && !editing && (
               <button
                 onClick={() => onSetResolution(isResolved ? 'none' : 'resolved')}
-                className="p-2 -m-1 text-xs text-slate-500 hover:text-slate-300 transition-colors shrink-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 rounded touch-target"
+                className="p-2 -m-1 text-xs text-slate-500 hover:text-slate-300 transition-colors shrink-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500 rounded touch-target"
                 aria-label={isResolved ? 'Unresolve comment' : 'Mark comment as resolved'}
               >
                 {isResolved ? (
@@ -161,13 +171,13 @@ export function CommentItem({ comment, onSetResolution, onEdit }: CommentItemPro
                 if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveEdit() }
               }}
               rows={3}
-              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
             />
             <div className="flex items-center gap-2">
               <button
                 onClick={saveEdit}
                 disabled={!editBody.trim() || editBody.trim() === comment.body}
-                className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
+                className="px-3 py-1 text-xs bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-900 rounded-lg transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-400"
               >
                 Save
               </button>

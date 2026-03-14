@@ -20,19 +20,19 @@ interface CardListItemProps {
 
 const ROW_CLASS: Record<CardState, string> = {
   normal: 'border-l-2 border-transparent hover:bg-slate-700/30 cursor-pointer',
-  selected: 'border-l-2 border-blue-400 bg-blue-900/20 cursor-pointer',
+  selected: 'border-l-2 border-amber-500 bg-amber-900/20 cursor-pointer',
   accepted: 'border-l-2 border-green-500 bg-green-900/10 cursor-pointer opacity-80',
   removed: 'border-l-2 border-red-500 bg-red-900/10 cursor-pointer opacity-80',
-  kept: 'border-l-2 border-cyan-500 bg-cyan-900/10 cursor-pointer opacity-80',
+  kept: 'border-l-2 border-teal-500 bg-teal-900/10 cursor-pointer opacity-80',
   rejected: 'border-l-2 border-orange-500 bg-orange-900/10 cursor-pointer opacity-80',
 }
 
 const NAME_CLASS: Record<CardState, string> = {
   normal: 'text-slate-200',
-  selected: 'text-blue-200 font-semibold',
+  selected: 'text-amber-300 font-semibold',
   accepted: 'text-green-300',
   removed: 'text-red-300',
-  kept: 'text-cyan-300',
+  kept: 'text-teal-300',
   rejected: 'text-orange-300',
 }
 
@@ -141,7 +141,7 @@ export const CardListItem = memo(function CardListItem({ card, state, imageUrl, 
         <ManaCostPips manaCost={card.manaCost} />
         {/* Mobile preview button — pulsing indicator when loading */}
         <button
-          className="md:hidden ml-1 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-500 hover:text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded relative"
+          className="md:hidden ml-1 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-500 hover:text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded relative"
           onClick={e => {
             e.stopPropagation()
             setPreviewOpen(true)

@@ -19,3 +19,19 @@ const firebaseConfig = {
 export const FIREBASE_CONFIGURED = !!import.meta.env.VITE_FIREBASE_PROJECT_ID
 
 export const app = initializeApp(firebaseConfig)
+
+// App Check — blocks scripted/bot writes via reCAPTCHA v3 (invisible to real users).
+// Requires VITE_RECAPTCHA_SITE_KEY to be set; skipped in dev unless key is present.
+if (import.meta.env.VITE_RECAPTCHA_SITE_KEY) {
+  import('firebase/app-check').then(({ initializeAppCheck, ReCaptchaV3Provider }) => {
+    if (import.meta.env.DEV) {
+      // Enables the debug token flow in the Firebase console for local development.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true
+    }
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_SITE_KEY),
+      isTokenAutoRefreshEnabled: true,
+    })
+  })
+}

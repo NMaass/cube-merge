@@ -624,7 +624,7 @@ function ReviewWorkspace({
           />
 
           {mode === 'edit' && hasSelection && (
-            <div className="hidden md:flex items-center gap-1.5">
+            <div className="hidden lg:flex items-center gap-1.5">
               <Button
                 onClick={() => setModalOpen(true)}
                 size="sm"
@@ -647,15 +647,15 @@ function ReviewWorkspace({
                   Pass
                 </Button>
               )}
-              <Button variant="ghost" size="sm" onClick={clearSelection}>✕</Button>
+              <Button variant="ghost" size="sm" onClick={clearSelection} aria-label="Clear selection">✕</Button>
             </div>
           )}
 
-          <div className="ml-auto flex items-center gap-1 min-w-0">
+          <div className="ml-auto flex items-center gap-1.5 min-w-0">
             {/* Changelog link */}
             <Link
               to={`/c/${reviewId}/changelog`}
-              className="hidden sm:inline-flex items-center gap-1 h-8 px-2 rounded text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors"
+              className="hidden sm:inline-flex items-center gap-1 h-8 px-2 rounded text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -690,7 +690,7 @@ function ReviewWorkspace({
             {/* Name / avatar — always just the avatar button; editing opens a modal */}
             <button
               onClick={() => { setNameInput(identity.displayName === 'Reviewer' ? '' : identity.displayName); setEditingName(true) }}
-              className={`h-8 w-8 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 rounded-full flex items-center justify-center text-[11px] font-bold uppercase text-slate-200 transition-colors shrink-0 ${nameSaved ? 'avatar-saved' : ''} ${identity.displayName === 'Reviewer' ? 'bg-amber-700 hover:bg-amber-600 ring-2 ring-amber-500/50' : 'bg-slate-600 hover:bg-slate-500'}`}
+              className={`h-8 w-8 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 rounded-full flex items-center justify-center text-[11px] font-bold uppercase text-slate-200 transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800 ${nameSaved ? 'avatar-saved' : ''} ${identity.displayName === 'Reviewer' ? 'bg-amber-700 hover:bg-amber-600 ring-2 ring-amber-500/50' : 'bg-slate-600 hover:bg-slate-500'}`}
               title={identity.displayName === 'Reviewer' ? 'Tap to set your name' : `Reviewing as ${identity.displayName} — tap to change`}
               aria-label={identity.displayName === 'Reviewer' ? 'Set your name' : `Your name: ${identity.displayName}. Tap to change.`}
             >
@@ -723,25 +723,25 @@ function ReviewWorkspace({
           <div id="main-content" className="flex flex-col flex-1 min-h-0">
             <DiffList sections={sections} imageMap={imageMap} loadingSet={loadingSet} changes={changes} selectable={mode === 'edit'} />
             {hasSelection && (
-              <div className="md:hidden sticky bottom-0 z-10 shrink-0 bg-slate-800 border-t border-slate-700 px-3 py-2 pb-safe flex items-center gap-2">
+              <div className="lg:hidden sticky bottom-0 z-10 shrink-0 bg-slate-800 border-t border-slate-700 px-3 py-2 pb-safe flex items-center gap-2">
                 <Button
                   onClick={() => setModalOpen(true)}
                   size="sm"
-                  className="flex-1"
+                  className="flex-1 min-h-[44px]"
                   variant={hasLeft && !hasRight ? 'danger' : 'primary'}
                 >
                   {actionLabel}
                 </Button>
                 {hasLeft && !hasRight && (
-                  <Button size="sm" variant="keep" onClick={() => setKeepModalOpen(true)}>Keep</Button>
+                  <Button size="sm" variant="keep" className="min-h-[44px]" onClick={() => setKeepModalOpen(true)}>Keep</Button>
                 )}
                 {hasRight && !hasLeft && (
-                  <Button size="sm" variant="reject" onClick={() => setRejectModalOpen(true)}>Reject</Button>
+                  <Button size="sm" variant="reject" className="min-h-[44px]" onClick={() => setRejectModalOpen(true)}>Reject</Button>
                 )}
                 {hasLeft && hasRight && (
-                  <Button size="sm" variant="pass" onClick={() => setPassModalOpen(true)} title="Keep left cards + reject right cards">Pass</Button>
+                  <Button size="sm" variant="pass" className="min-h-[44px]" onClick={() => setPassModalOpen(true)} title="Keep left cards + reject right cards">Pass</Button>
                 )}
-                <Button variant="ghost" size="sm" onClick={clearSelection} aria-label="Clear selection">✕</Button>
+                <Button variant="ghost" size="sm" className="min-h-[44px]" onClick={clearSelection} aria-label="Clear selection">✕</Button>
               </div>
             )}
           </div>
@@ -803,8 +803,8 @@ function ReviewWorkspace({
                       className="text-center ml-auto group"
                       title="View changelog"
                     >
-                      <div className="text-xl font-bold text-slate-400 group-hover:text-blue-400 transition-colors leading-none">{changes.length}</div>
-                      <div className="text-[10px] text-slate-500 group-hover:text-blue-400 uppercase tracking-wider mt-0.5 transition-colors flex items-center justify-center gap-0.5">
+                      <div className="text-xl font-bold text-slate-400 group-hover:text-amber-400 transition-colors leading-none">{changes.length}</div>
+                      <div className="text-[10px] text-slate-500 group-hover:text-amber-400 uppercase tracking-wider mt-0.5 transition-colors flex items-center justify-center gap-0.5">
                         changes
                         <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -909,7 +909,7 @@ function ReviewWorkspace({
               }}
               placeholder="e.g. Alex, TheMagicPlayer…"
               aria-label="Your display name"
-              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
             />
             <div className="flex justify-end gap-2">
               <Button variant="secondary" size="sm" onClick={() => setEditingName(false)}>Cancel</Button>
@@ -1014,7 +1014,7 @@ export default function ReviewPage() {
         <div className="text-center space-y-3">
           <p className="text-slate-300 font-medium">Review not found</p>
           <p className="text-sm text-slate-500">This review may have been deleted or the link is invalid.</p>
-          <Link to="/" className="text-blue-400 hover:text-blue-300 text-sm">← Start a new review</Link>
+          <Link to="/" className="text-amber-400 hover:text-amber-300 text-sm">← Start a new review</Link>
         </div>
       </div>
     )
