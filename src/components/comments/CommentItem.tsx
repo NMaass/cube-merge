@@ -15,6 +15,7 @@ function CommentBody({ body }: { body: string }) {
   const [hoverPos, setHoverPos] = useState<{ top: number; left: number } | null>(null)
   const [hoverCard, setHoverCard] = useState<string | null>(null)
   const rafRef = useRef<number | null>(null)
+  const latestEvent = useRef<{ x: number; y: number; name: string } | null>(null)
 
   // Parse [[Card Name]] mentions
   const segments: Array<{ text: string; isCard?: boolean }> = []
@@ -30,10 +31,11 @@ function CommentBody({ body }: { body: string }) {
   if (last < body.length) segments.push({ text: body.slice(last) })
 
   function handleCardMouseMove(e: React.MouseEvent, name: string) {
+    latestEvent.current = { x: e.clientX, y: e.clientY, name }
     if (rafRef.current !== null) return
-    const x = e.clientX, y = e.clientY
     rafRef.current = requestAnimationFrame(() => {
       rafRef.current = null
+      const { x, y, name: lName } = latestEvent.current!
       const imgW = 180
       const imgH = 252
       let left = x + 20
@@ -42,7 +44,7 @@ function CommentBody({ body }: { body: string }) {
       if (top < 8) top = 8
       if (top + imgH > window.innerHeight - 8) top = window.innerHeight - imgH - 8
       setHoverPos({ top, left })
-      setHoverCard(name)
+      setHoverCard(lName)
     })
   }
 

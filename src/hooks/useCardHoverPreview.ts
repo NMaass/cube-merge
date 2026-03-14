@@ -8,6 +8,7 @@ export function useCardHoverPreview() {
   const [hoverPos, setHoverPos] = useState<{ top: number; left: number } | null>(null)
   const activeRef = useRef(false)
   const rafRef = useRef<number | null>(null)
+  const latestPos = useRef<{ x: number; y: number; hasBack: boolean } | null>(null)
 
   useEffect(() => {
     function handleOtherPreview(e: Event) {
@@ -34,14 +35,16 @@ export function useCardHoverPreview() {
   }, [previewId])
 
   function setPosition(x: number, y: number, hasBack: boolean) {
-    // Throttle to one update per animation frame (~60fps)
+    // Always store the latest coords so the RAF callback uses them
+    latestPos.current = { x, y, hasBack }
     if (rafRef.current !== null) return
     rafRef.current = requestAnimationFrame(() => {
       rafRef.current = null
-      const totalW = hasBack ? IMG_W * 2 + 8 : IMG_W
-      let left = x + 20
-      let top = y - IMG_H / 2
-      if (left + totalW > window.innerWidth - 8) left = x - totalW - 20
+      const { x: lx, y: ly, hasBack: lHasBack } = latestPos.current!
+      const totalW = lHasBack ? IMG_W * 2 + 8 : IMG_W
+      let left = lx + 20
+      let top = ly - IMG_H / 2
+      if (left + totalW > window.innerWidth - 8) left = lx - totalW - 20
       if (top < 8) top = 8
       if (top + IMG_H > window.innerHeight - 8) top = window.innerHeight - IMG_H - 8
       window.dispatchEvent(new CustomEvent('cube-diff:hover-preview-open', { detail: { id: previewId } }))
