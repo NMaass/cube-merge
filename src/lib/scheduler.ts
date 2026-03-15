@@ -48,13 +48,13 @@ export function scheduleIdleWork<T>(
   callback: () => T,
   options?: { timeout?: number }
 ): Promise<T> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const wrappedCallback = (_deadline?: IdleDeadline) => {
       try {
         const result = callback()
         resolve(result)
       } catch (error) {
-        throw error
+        reject(error)
       }
     }
     

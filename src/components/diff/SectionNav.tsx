@@ -47,11 +47,11 @@ export function SectionNav({
     }
   }
 
-  const btnClass = `h-8 px-2.5 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40
+  const btnClass = `h-9 min-h-9 min-w-9 px-2.5 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40
     disabled:cursor-not-allowed text-slate-200 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500`
 
   return (
-    <div className={`flex items-center gap-1 shrink-0 ${disabled ? 'opacity-30 pointer-events-none' : ''}`}>
+    <div className={`flex items-center gap-1.5 shrink-0 ${disabled ? 'opacity-30 pointer-events-none' : ''}`}>
       <button 
         onClick={onPrev} 
         disabled={disabled || currentIndex === 0} 
@@ -73,7 +73,7 @@ export function SectionNav({
         title="Type a section (e.g. 3G, C4, Land, 6+W)"
         aria-label="Navigate to section"
         aria-describedby="section-nav-instructions"
-        className="h-8 w-14 sm:w-20 bg-slate-700 border border-slate-600 rounded px-1.5 text-sm font-mono text-slate-200 text-center focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+        className="h-9 min-h-9 w-14 sm:w-20 bg-slate-700 border border-slate-600 rounded px-1.5 text-sm font-mono text-slate-200 text-center focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
         spellCheck={false}
       />
       <div id="section-nav-instructions" className="sr-only">

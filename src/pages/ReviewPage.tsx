@@ -559,7 +559,7 @@ function ReviewWorkspace({
             </div>
           )}
 
-          <div className="ml-auto flex items-center gap-1 min-w-0">
+          <div className="ml-auto flex items-center gap-1.5 min-w-0">
             {/* Changelog link */}
             <Link
               to={`/c/${reviewId}/changelog`}
@@ -598,7 +598,7 @@ function ReviewWorkspace({
             {/* Name / avatar — always just the avatar button; editing opens a modal */}
             <button
               onClick={() => { setNameInput(identity.displayName === 'Reviewer' ? '' : identity.displayName); setEditingName(true) }}
-              className={`h-8 w-8 rounded-full flex items-center justify-center text-[11px] font-bold uppercase text-slate-200 transition-colors shrink-0 ${nameSaved ? 'avatar-saved' : ''} ${identity.displayName === 'Reviewer' ? 'bg-amber-700 hover:bg-amber-600 ring-2 ring-amber-500/50' : 'bg-slate-600 hover:bg-slate-500'}`}
+              className={`h-9 w-9 min-h-9 min-w-9 rounded-full flex items-center justify-center text-[11px] font-bold uppercase text-slate-200 transition-colors shrink-0 ${nameSaved ? 'avatar-saved' : ''} ${identity.displayName === 'Reviewer' ? 'bg-amber-700 hover:bg-amber-600 ring-2 ring-amber-500/50' : 'bg-slate-600 hover:bg-slate-500'}`}
               title={identity.displayName === 'Reviewer' ? 'Tap to set your name' : `Reviewing as ${identity.displayName} — tap to change`}
               aria-label={identity.displayName === 'Reviewer' ? 'Set your name' : `Your name: ${identity.displayName}. Tap to change.`}
             >

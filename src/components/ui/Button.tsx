@@ -18,7 +18,7 @@ export function Button({ variant = 'primary', size = 'md', className = '', child
   }
 
   const sizes = {
-    sm: 'h-8 px-3 text-sm',
+    sm: 'h-9 min-h-9 min-w-9 px-3 text-sm',
     md: 'px-4 py-2 text-sm',
     lg: 'px-6 py-3 text-base',
   }

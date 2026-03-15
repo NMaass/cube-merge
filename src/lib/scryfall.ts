@@ -4,17 +4,25 @@ import { colorCategoryFrom } from './sorting'
 
 const SCRYFALL_API = 'https://api.scryfall.com'
 
+function bestImageUrl(
+  imageUris?: { normal?: string; large?: string; small?: string; png?: string; art_crop?: string }
+): string {
+  return imageUris?.normal || imageUris?.large || imageUris?.small || imageUris?.png || ''
+}
+
 /** Store a Scryfall card's image URL(s) into imageMap.
  *  queriedName: the name we looked up (may differ from card.name for IP-renamed/arena cards). */
 function storeCard(imageMap: Map<string, string>, card: ScryfallCard, queriedName?: string) {
   const face0 = card.card_faces?.[0]
   const face1 = card.card_faces?.[1]
-  // Some DFCs have front image at card level (not face level) — handle both layouts
-  const frontUrl = face0?.image_uris?.normal || card.image_uris?.normal || ''
-  const backUrl = face1?.image_uris?.normal || ''
-  const isTrueDfc = !!(frontUrl && backUrl)
+  const hasMultipleFaces = (card.card_faces?.length || 0) > 1
 
-  if (isTrueDfc) {
+  // Some DFCs have front image at card level and some only at face level.
+  const frontUrl = bestImageUrl(face0?.image_uris) || bestImageUrl(card.image_uris)
+  const backUrl = bestImageUrl(face1?.image_uris)
+  const isDoubleFaced = hasMultipleFaces && !!frontUrl && !!backUrl
+
+  if (isDoubleFaced) {
     const face0name = face0?.name?.toLowerCase() || ''
     const face1name = face1?.name?.toLowerCase() || ''
     const fullname = card.name.toLowerCase()
@@ -24,27 +32,38 @@ function storeCard(imageMap: Map<string, string>, card: ScryfallCard, queriedNam
       imageMap.set(n, frontUrl)
       imageMap.set(n + '__back', backUrl)
     }
-    // Back-face name (e.g. "Cren, Undercity Dreamer") → back image shown first
+
+    // Back-face name → back image shown first
     if (face1name) {
       imageMap.set(face1name, backUrl)
       imageMap.set(face1name + '__back', frontUrl)
     }
-    // If we got here via a queried name (fuzzy fallback), store it too, oriented to the right face
+
+    // Store fuzzy queried names too, including any explicit front-face shorthand.
     if (queriedName) {
       const qn = queriedName.toLowerCase()
+      const qnFront = qn.split(' // ')[0]
       const isBackFace = qn === face1name
-      imageMap.set(qn, isBackFace ? backUrl : frontUrl)
-      imageMap.set(qn + '__back', isBackFace ? frontUrl : backUrl)
+      const primary = isBackFace ? backUrl : frontUrl
+      const alternate = isBackFace ? frontUrl : backUrl
+
+      for (const key of [qn, qnFront]) {
+        if (!key) continue
+        imageMap.set(key, primary)
+        imageMap.set(key + '__back', alternate)
+      }
     }
-  } else {
-    const imageUri = card.image_uris?.normal || face0?.image_uris?.normal || ''
-    if (imageUri) {
-      imageMap.set(card.name.toLowerCase(), imageUri)
-      if (queriedName) imageMap.set(queriedName.toLowerCase(), imageUri)
-      // Adventure/split: Scryfall returns "Front // Back" but CubeCobra may store
-      // just the front face name — index by front-face name so either lookup hits
-      if (face0?.name) imageMap.set(face0.name.toLowerCase(), imageUri)
-    }
+
+    return
+  }
+
+  const imageUri = bestImageUrl(card.image_uris) || bestImageUrl(face0?.image_uris)
+  if (imageUri) {
+    imageMap.set(card.name.toLowerCase(), imageUri)
+    if (queriedName) imageMap.set(queriedName.toLowerCase(), imageUri)
+    // Adventure/split: Scryfall returns "Front // Back" but CubeCobra may store
+    // just the front face name — index by front-face name so either lookup hits
+    if (face0?.name) imageMap.set(face0.name.toLowerCase(), imageUri)
   }
 }
 

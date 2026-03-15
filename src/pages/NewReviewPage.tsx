@@ -385,7 +385,7 @@ export function ReviewWorkspace({
             </div>
           )}
 
-          <div className="ml-auto flex items-center gap-1 min-w-0">
+          <div className="ml-auto flex items-center gap-1.5 min-w-0">
             {exportError && (
               <span className="hidden sm:inline text-xs text-red-400 max-w-[140px] truncate" title={exportError}>
                 Share failed
@@ -410,7 +410,7 @@ export function ReviewWorkspace({
             {/* Copy link on mobile when URL ready */}
             {shareUrl && (
               <button
-                className={`md:hidden h-8 w-8 flex items-center justify-center rounded bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors ${urlCopyPop ? 'copy-pop' : ''}`}
+                className={`md:hidden h-9 w-9 min-h-9 min-w-9 flex items-center justify-center rounded bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors ${urlCopyPop ? 'copy-pop' : ''}`}
                 onClick={handleCopyShareUrl}
                 aria-label="Copy share link"
               >
@@ -445,14 +445,14 @@ export function ReviewWorkspace({
                   onKeyDown={e => { if (e.key === 'Enter') handleSetName(); if (e.key === 'Escape') setEditingName(false) }}
                   placeholder="Your name"
                   aria-label="Your display name"
-                  className="h-8 w-24 bg-slate-700 border border-slate-600 rounded px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="h-9 w-24 bg-slate-700 border border-slate-600 rounded px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
                 <Button size="sm" onClick={handleSetName} aria-label="Confirm name">✓</Button>
               </div>
             ) : (
               <button
                 onClick={() => setEditingName(true)}
-                className="h-8 flex items-center gap-1.5 px-2 rounded bg-slate-700 hover:bg-slate-600 text-xs text-slate-300 transition-colors"
+                className="h-9 min-h-9 min-w-9 flex items-center gap-1.5 px-2 rounded bg-slate-700 hover:bg-slate-600 text-xs text-slate-300 transition-colors"
                 title="Set your name"
               >
                 <span className="w-5 h-5 rounded-full bg-slate-500 flex items-center justify-center text-[10px] font-bold uppercase shrink-0">
