@@ -1,24 +1,26 @@
 import { createPortal } from 'react-dom'
-import { Suggestion } from '../../hooks/useAutocomplete'
+import { Suggestion, CaretAnchor } from '../../hooks/useAutocomplete'
 
 interface SuggestionMenuProps {
   suggestions: Suggestion[]
-  anchor: { top: number; bottom: number; left: number; width: number } | null
+  anchor: CaretAnchor | null
   onSelect: (s: Suggestion) => void
 }
+
+const MENU_WIDTH = 220
+const MIN_HEIGHT = 80
 
 export function SuggestionMenu({ suggestions, anchor, onSelect }: SuggestionMenuProps) {
   if (!anchor || suggestions.length === 0) return null
   const vh = window.visualViewport?.height ?? window.innerHeight
   const vw = window.visualViewport?.width ?? window.innerWidth
-  const left = Math.max(4, Math.min(anchor.left, vw - anchor.width - 4))
-  const spaceBelow = vh - anchor.bottom - 8
-  const spaceAbove = anchor.top - 8
-  const MIN_HEIGHT = 80
-  const flipAbove = spaceBelow < MIN_HEIGHT && spaceAbove > spaceBelow
+  const caretBottom = anchor.top + anchor.lineHeight
+  const left = Math.max(4, Math.min(anchor.left, vw - MENU_WIDTH - 4))
+  const spaceBelow = vh - caretBottom - 8
+  const flipAbove = spaceBelow < MIN_HEIGHT && anchor.top - 8 > spaceBelow
   const posStyle = flipAbove
-    ? { bottom: vh - anchor.top + 4, maxHeight: Math.min(192, spaceAbove) }
-    : { top: anchor.bottom + 4, maxHeight: Math.min(192, spaceBelow) }
+    ? { bottom: vh - anchor.top + 4, maxHeight: Math.min(192, anchor.top - 8) }
+    : { top: caretBottom + 4, maxHeight: Math.min(192, spaceBelow) }
   return createPortal(
     <div
       role="listbox"
@@ -27,7 +29,7 @@ export function SuggestionMenu({ suggestions, anchor, onSelect }: SuggestionMenu
         position: 'fixed',
         ...posStyle,
         left,
-        width: anchor.width,
+        width: MENU_WIDTH,
         zIndex: 9999,
       }}
       className="bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-y-auto"

@@ -71,6 +71,7 @@ export function SectionNav({
         onBlur={handleBlur}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
+        onDoubleClick={e => (e.currentTarget as HTMLInputElement).select()}
         title="Type a section (e.g. 3G, C4, Land, 6+W)"
         aria-label="Navigate to section"
         aria-describedby="section-nav-instructions"

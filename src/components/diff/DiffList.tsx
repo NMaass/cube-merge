@@ -20,7 +20,7 @@ const SectionHeader = memo(function SectionHeader({ section, side }: { section: 
 
   return (
     <div
-      className="sticky top-[40px] md:top-[33px] z-10 flex items-center justify-between px-3 py-1"
+      className="sticky top-[40px] md:top-[33px] z-10 flex items-center justify-between px-2 sm:px-3 py-1"
       style={{ backgroundColor: COLOR_BG[section.colorCategory] + '28', borderBottom: `1px solid ${COLOR_BG[section.colorCategory]}40` }}
     >
       <span className="text-[11px] font-semibold font-mono tracking-wide text-slate-400">{label}</span>

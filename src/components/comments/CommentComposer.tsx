@@ -49,7 +49,7 @@ export function CommentComposer({ onSubmit, diffCards = [], reviewerNames = [] }
       <div className="relative">
         <Textarea
           ref={textareaRef}
-          placeholder="Add a comment… (/ for cards, @ for names)"
+          placeholder="Add a comment… / for cards, @ for names"
           value={body}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
