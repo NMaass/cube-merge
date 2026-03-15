@@ -70,10 +70,12 @@ export function useAutocomplete({ diffCards = [], reviewerNames = [] }: UseAutoc
   const [anchor, setAnchor] = useState<CaretAnchor | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const scryfallTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scryfallAbort = useRef<AbortController | null>(null)
 
   useEffect(() => {
     return () => {
       if (scryfallTimer.current !== null) clearTimeout(scryfallTimer.current)
+      scryfallAbort.current?.abort()
     }
   }, [])
 
@@ -100,6 +102,8 @@ export function useAutocomplete({ diffCards = [], reviewerNames = [] }: UseAutoc
       setTriggerStart(trigger.start)
 
       if (trigger.kind === 'reviewer') {
+        if (scryfallTimer.current !== null) clearTimeout(scryfallTimer.current)
+        scryfallAbort.current?.abort()
         const items = reviewerNames
           .filter(n => !q || n.toLowerCase().includes(q))
           .slice(0, 6)
@@ -117,10 +121,13 @@ export function useAutocomplete({ diffCards = [], reviewerNames = [] }: UseAutoc
 
       // Scryfall for queries >= 2 chars
       if (scryfallTimer.current !== null) clearTimeout(scryfallTimer.current)
+      scryfallAbort.current?.abort()
       if (q.length >= 2) {
         scryfallTimer.current = setTimeout(async () => {
+          const ac = new AbortController()
+          scryfallAbort.current = ac
           try {
-            const res = await fetch(`https://api.scryfall.com/cards/autocomplete?q=${encodeURIComponent(q)}`)
+            const res = await fetch(`https://api.scryfall.com/cards/autocomplete?q=${encodeURIComponent(q)}`, { signal: ac.signal })
             if (!res.ok) return
             const json = await res.json() as { data: string[] }
             const localSet = new Set(localMatches.map(s => s.value.toLowerCase()))
@@ -129,13 +136,15 @@ export function useAutocomplete({ diffCards = [], reviewerNames = [] }: UseAutoc
               .map(name => ({ kind: 'card' as const, value: name }))
             const merged = [...localMatches, ...extra].slice(0, 8)
             setSuggestions(merged)
-          } catch {
-            // silently ignore
+          } catch (e) {
+            if (e instanceof DOMException && e.name === 'AbortError') return
+            // silently ignore other errors
           }
         }, 300)
       }
     } else {
       if (scryfallTimer.current !== null) clearTimeout(scryfallTimer.current)
+      scryfallAbort.current?.abort()
       setSuggestions([])
       setTriggerStart(-1)
       setAnchor(null)
@@ -155,6 +164,7 @@ export function useAutocomplete({ diffCards = [], reviewerNames = [] }: UseAutoc
     setTriggerStart(-1)
     setAnchor(null)
     if (scryfallTimer.current !== null) clearTimeout(scryfallTimer.current)
+    scryfallAbort.current?.abort()
     setTimeout(() => {
       el.focus()
       const newPos = triggerStart + insert.length + 1
@@ -164,6 +174,7 @@ export function useAutocomplete({ diffCards = [], reviewerNames = [] }: UseAutoc
 
   function dismiss() {
     if (scryfallTimer.current !== null) clearTimeout(scryfallTimer.current)
+    scryfallAbort.current?.abort()
     setSuggestions([])
     setTriggerStart(-1)
     setAnchor(null)
