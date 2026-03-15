@@ -305,7 +305,7 @@ export default function LandingPage() {
         <meta name="twitter:card" content="summary" />
         <meta name="twitter:title" content="Cube Merge — MTG Cube Comparison Tool" />
         <meta name="twitter:description" content="Compare two MTG cube lists, annotate changes, and collaborate in real time." />
-        <link rel="canonical" href="https://cubediff.app/" />
+        <link rel="canonical" href="https://cube-merge.pages.dev/" />
       </Helmet>
 
       <div className="min-h-screen bg-slate-900 flex flex-col" style={{
@@ -403,7 +403,7 @@ export default function LandingPage() {
 
             <div className="text-center text-sm text-slate-500 space-y-1">
               <p>Or open a published snapshot:</p>
-              <p className="font-mono text-slate-400 text-xs">cubediff.app/<span className="text-slate-500">{'{snapshotId}'}</span></p>
+              <p className="font-mono text-slate-400 text-xs">cube-merge.pages.dev/<span className="text-slate-500">{'{snapshotId}'}</span></p>
             </div>
           </div>
         </main>

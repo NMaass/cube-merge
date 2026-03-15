@@ -81,6 +81,8 @@ function ReviewWorkspace({
   const [editingName, setEditingName] = useState(false)
   const [nameSaved, setNameSaved] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [shareMenuOpen, setShareMenuOpen] = useState(false)
+  const shareMenuRef = useRef<HTMLDivElement>(null)
 
   const diffData = review.rawData
   const cubeAId = review.cubeAId
@@ -97,6 +99,17 @@ function ReviewWorkspace({
   useEffect(() => {
     if (mode === 'view') clearSelection()
   }, [mode])
+
+  useEffect(() => {
+    if (!shareMenuOpen) return
+    function handleClick(e: MouseEvent) {
+      if (shareMenuRef.current && !shareMenuRef.current.contains(e.target as Node)) {
+        setShareMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [shareMenuOpen])
 
   const { imageMap, loadingSet } = useCardImages(sections, currentIndex)
   const currentLabel = sections[currentIndex]
@@ -632,24 +645,26 @@ function ReviewWorkspace({
       </Helmet>
       <div className="h-dvh bg-slate-900 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="shrink-0 flex items-center gap-1.5 px-2 py-2 bg-slate-800 border-b border-slate-700 overflow-x-hidden">
+        <header className="shrink-0 flex items-center gap-1.5 px-2 py-2 bg-slate-800 border-b border-slate-700 relative z-20">
           <ModeToggle mode={mode} onChange={(newMode) => { setMode(newMode); setEditingChange(null) }} />
           {changes.length > 0 && (
             <span className="hidden sm:inline text-xs text-slate-500 shrink-0 tabular-nums">
               {resolvedCount}/{changes.length}
             </span>
           )}
-          <SectionNav
-            currentIndex={currentIndex}
-            total={total}
-            currentLabel={currentLabel}
-            onPrev={goPrev}
-            onNext={goNext}
-            onGoTo={goTo}
-            findSection={findSection}
-            disabled={mode === 'view'}
-            sectionComplete={isSectionComplete}
-          />
+          <div className="flex-1 min-w-0">
+            <SectionNav
+              currentIndex={currentIndex}
+              total={total}
+              currentLabel={currentLabel}
+              onPrev={goPrev}
+              onNext={goNext}
+              onGoTo={goTo}
+              findSection={findSection}
+              disabled={mode === 'view'}
+              sectionComplete={isSectionComplete}
+            />
+          </div>
 
           {mode === 'edit' && hasSelection && (
             <div className="hidden lg:flex items-center gap-1.5">
@@ -690,35 +705,66 @@ function ReviewWorkspace({
               </svg>
               Changelog
             </Link>
-            {/* Export */}
+            {/* Export — desktop only */}
             <Button
               variant="secondary"
               size="sm"
               onClick={() => { setCopyTab('summary'); setCopyModalOpen(true) }}
               aria-label="Export changes"
+              className="hidden sm:inline-flex"
             >
-              <svg className="w-3.5 h-3.5 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              <span className="hidden sm:inline">Export</span>
+              Export
             </Button>
-            {/* Copy Link */}
+            {/* Copy Link — desktop only */}
             <Button
               variant="primary"
               size="sm"
               onClick={handleCopyLink}
               aria-label="Copy link"
-              className={linkCopyPop ? 'copy-pop' : ''}
+              className={`hidden sm:inline-flex ${linkCopyPop ? 'copy-pop' : ''}`}
             >
               {linkCopied
-                ? <><svg className="w-3.5 h-3.5 text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg><span className="hidden sm:inline ml-1">Copied!</span></>
-                : <><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg><span className="hidden sm:inline ml-1">Copy Link</span></>
+                ? <><svg className="w-3.5 h-3.5 text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg><span className="ml-1">Copied!</span></>
+                : <><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg><span className="ml-1">Copy Link</span></>
               }
             </Button>
+            {/* Share button — mobile only (combines Export + Copy Link) */}
+            <div ref={shareMenuRef} className="relative sm:hidden">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setShareMenuOpen(v => !v)}
+                aria-label="Share"
+                className={`min-h-[44px] sm:min-h-0 px-3 ${linkCopyPop ? 'copy-pop' : ''}`}
+              >
+                {linkCopied
+                  ? <svg className="w-3.5 h-3.5 text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                  : <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                }
+              </Button>
+              {shareMenuOpen && (
+                <div className="absolute right-0 top-full mt-1 w-36 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 overflow-hidden">
+                  <button
+                    className="w-full text-left px-3 py-2.5 text-xs text-slate-200 hover:bg-slate-700 flex items-center gap-2 transition-colors"
+                    onMouseDown={e => { e.preventDefault(); handleCopyLink(); setShareMenuOpen(false) }}
+                  >
+                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                    Copy Link
+                  </button>
+                  <button
+                    className="w-full text-left px-3 py-2.5 text-xs text-slate-200 hover:bg-slate-700 flex items-center gap-2 transition-colors border-t border-slate-700"
+                    onMouseDown={e => { e.preventDefault(); setCopyTab('summary'); setCopyModalOpen(true); setShareMenuOpen(false) }}
+                  >
+                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    Export
+                  </button>
+                </div>
+              )}
+            </div>
             {/* Name / avatar — always just the avatar button; editing opens a modal */}
             <button
               onClick={() => { setNameInput(identity.displayName === 'Reviewer' ? '' : identity.displayName); setEditingName(true) }}
-              className={`h-8 w-8 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 rounded-full flex items-center justify-center text-[11px] font-bold uppercase text-slate-200 transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800 ${nameSaved ? 'avatar-saved' : ''} ${identity.displayName === 'Reviewer' ? 'bg-amber-700 hover:bg-amber-600 ring-2 ring-amber-500/50' : 'bg-slate-600 hover:bg-slate-500'}`}
+              className={`h-8 w-8 min-h-[44px] sm:min-h-0 rounded-full flex items-center justify-center text-[11px] font-bold uppercase text-slate-200 transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800 ${nameSaved ? 'avatar-saved' : ''} ${identity.displayName === 'Reviewer' ? 'bg-amber-700 hover:bg-amber-600 ring-2 ring-amber-500/50' : 'bg-slate-600 hover:bg-slate-500'}`}
               title={identity.displayName === 'Reviewer' ? 'Tap to set your name' : `Reviewing as ${identity.displayName} — tap to change`}
               aria-label={identity.displayName === 'Reviewer' ? 'Set your name' : `Your name: ${identity.displayName}. Tap to change.`}
             >

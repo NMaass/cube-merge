@@ -146,7 +146,7 @@ export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCar
         <div className="relative">
           <Textarea
             ref={textareaRef}
-            placeholder="Add a note (optional)… (/ for cards)"
+            placeholder="Add a note… type / to search any card"
             value={comment}
             onChange={e => {
               setComment(e.target.value)

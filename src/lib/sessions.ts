@@ -19,7 +19,7 @@ export function groupIntoSessions(events: ReviewEvent[]): Session[] {
     const ms = event.createdAt.toMillis()
     const isGap = current && ms - current.endTime.toMillis() > SESSION_GAP_MS
 
-    if (!current || isGap) {
+    if (!current || isGap || current.authorId !== event.authorId) {
       current = {
         key: `${event.authorId}-${ms}`,
         authorId: event.authorId,
