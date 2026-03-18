@@ -670,7 +670,7 @@ function ReviewWorkspace({
           />
 
           {/* Right column */}
-          <div className="flex items-center justify-end gap-1.5 min-w-0">
+          <div className="flex items-center justify-end gap-1 min-w-0">
             {mode === 'edit' && hasSelection && (
               <div className="hidden lg:flex items-center gap-1.5 shrink-0">
                 <Button
@@ -734,7 +734,7 @@ function ReviewWorkspace({
             {/* Avatar / name — opens modal with batch-update on save */}
             <button
               onClick={() => { setNameInput(identity.displayName === 'Reviewer' ? '' : identity.displayName); setEditingName(true) }}
-              className={`h-auto min-h-[44px] min-w-[44px] sm:h-8 sm:w-8 sm:min-h-0 sm:min-w-0 rounded-full flex items-center justify-center text-[11px] font-bold uppercase text-slate-200 transition-colors shrink-0 ${nameSaved ? 'avatar-saved' : ''} ${identity.displayName === 'Reviewer' ? 'bg-amber-700 hover:bg-amber-600 ring-2 ring-amber-500/50' : 'bg-slate-600 hover:bg-slate-500'}`}
+              className={`touch-target h-8 w-8 rounded-full flex items-center justify-center text-[11px] font-bold uppercase text-slate-200 transition-colors shrink-0 ${nameSaved ? 'avatar-saved' : ''} ${identity.displayName === 'Reviewer' ? 'bg-amber-700 hover:bg-amber-600 ring-2 ring-amber-500/50' : 'bg-slate-600 hover:bg-slate-500'}`}
               title={identity.displayName === 'Reviewer' ? 'Tap to set your name' : `Reviewing as ${identity.displayName} — tap to change`}
               aria-label={identity.displayName === 'Reviewer' ? 'Set your name' : `Your name: ${identity.displayName}. Tap to change.`}
             >
@@ -747,7 +747,7 @@ function ReviewWorkspace({
                 size="sm"
                 onClick={() => setShareMenuOpen(v => !v)}
                 aria-label="Share"
-                className={`min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 px-3 ${linkCopyPop ? 'copy-pop' : ''}`}
+                className={`touch-target !w-8 !px-0 ${linkCopyPop ? 'copy-pop' : ''}`}
               >
                 {linkCopied
                   ? <svg className="w-3.5 h-3.5 text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
