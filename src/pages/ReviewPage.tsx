@@ -645,56 +645,59 @@ function ReviewWorkspace({
       </Helmet>
       <div className="h-dvh bg-slate-900 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="shrink-0 flex items-center gap-1.5 px-2 py-2 bg-slate-800 border-b border-slate-700 relative z-20">
-          <ModeToggle mode={mode} onChange={(newMode) => { setMode(newMode); setEditingChange(null) }} />
-          {changes.length > 0 && (
-            <span className="hidden sm:inline text-xs text-slate-500 shrink-0 tabular-nums">
-              {resolvedCount}/{changes.length}
-            </span>
-          )}
-          <div className="flex-1 min-w-0 flex justify-center">
-            <SectionNav
-              currentIndex={currentIndex}
-              total={total}
-              currentLabel={currentLabel}
-              onPrev={goPrev}
-              onNext={goNext}
-              onGoTo={goTo}
-              findSection={findSection}
-              disabled={mode === 'view'}
-              sectionComplete={isSectionComplete}
-            />
+        <header className="shrink-0 grid grid-cols-[1fr_auto_1fr] items-center px-2 py-2 bg-slate-800 border-b border-slate-700 relative z-20">
+          {/* Left column */}
+          <div className="flex items-center gap-1.5">
+            <ModeToggle mode={mode} onChange={(newMode) => { setMode(newMode); setEditingChange(null) }} />
+            {changes.length > 0 && (
+              <span className="hidden sm:inline text-xs text-slate-500 shrink-0 tabular-nums">
+                {resolvedCount}/{changes.length}
+              </span>
+            )}
           </div>
 
-          {mode === 'edit' && hasSelection && (
-            <div className="hidden lg:flex items-center gap-1.5">
-              <Button
-                onClick={() => setModalOpen(true)}
-                size="sm"
-                variant={hasLeft && !hasRight ? 'danger' : 'primary'}
-              >
-                {actionLabel}
-              </Button>
-              {hasLeft && !hasRight && (
-                <Button size="sm" variant="keep" onClick={() => setKeepModalOpen(true)}>
-                  Keep
-                </Button>
-              )}
-              {hasRight && !hasLeft && (
-                <Button size="sm" variant="reject" onClick={() => setRejectModalOpen(true)}>
-                  Reject
-                </Button>
-              )}
-              {hasLeft && hasRight && (
-                <Button size="sm" variant="pass" onClick={() => setPassModalOpen(true)} title="Keep left cards + reject right cards">
-                  Pass
-                </Button>
-              )}
-              <Button variant="ghost" size="sm" onClick={clearSelection} aria-label="Clear selection">✕</Button>
-            </div>
-          )}
+          {/* Center column — always truly centered over the column join */}
+          <SectionNav
+            currentIndex={currentIndex}
+            total={total}
+            currentLabel={currentLabel}
+            onPrev={goPrev}
+            onNext={goNext}
+            onGoTo={goTo}
+            findSection={findSection}
+            disabled={mode === 'view'}
+            sectionComplete={isSectionComplete}
+          />
 
-          <div className="ml-auto flex items-center gap-1.5 min-w-0">
+          {/* Right column */}
+          <div className="flex items-center justify-end gap-1.5 min-w-0">
+            {mode === 'edit' && hasSelection && (
+              <div className="hidden lg:flex items-center gap-1.5 shrink-0">
+                <Button
+                  onClick={() => setModalOpen(true)}
+                  size="sm"
+                  variant={hasLeft && !hasRight ? 'danger' : 'primary'}
+                >
+                  {actionLabel}
+                </Button>
+                {hasLeft && !hasRight && (
+                  <Button size="sm" variant="keep" onClick={() => setKeepModalOpen(true)}>
+                    Keep
+                  </Button>
+                )}
+                {hasRight && !hasLeft && (
+                  <Button size="sm" variant="reject" onClick={() => setRejectModalOpen(true)}>
+                    Reject
+                  </Button>
+                )}
+                {hasLeft && hasRight && (
+                  <Button size="sm" variant="pass" onClick={() => setPassModalOpen(true)} title="Keep left cards + reject right cards">
+                    Pass
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" onClick={clearSelection} aria-label="Clear selection">✕</Button>
+              </div>
+            )}
             {/* Changelog link */}
             <Link
               to={`/c/${reviewId}/changelog`}
