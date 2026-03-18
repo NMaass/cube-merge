@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from '../lib/router'
+import { BuildInfoDisplay } from '../components/ui/BuildInfoDisplay'
 import { Helmet } from 'react-helmet-async'
 import { nanoid } from 'nanoid'
 import { Button } from '../components/ui/Button'
@@ -116,13 +117,14 @@ export default function LandingPage() {
     setPageState('loading')
     setFetchError(null)
     setManualError(null)
+
+    let diff: { onlyA: CubeCard[]; onlyB: CubeCard[] }
     try {
       const [cardsA, cardsB] = await Promise.all([
         fetchCubeCobraList(idA),
         fetchCubeCobraList(idB),
       ])
-      const diff = computeDiff(cardsA, cardsB)
-      await createReviewAndRedirect(idA, idB, diff)
+      diff = computeDiff(cardsA, cardsB)
     } catch (e) {
       const msg = e instanceof Error ? e.message : ''
       if (msg === 'CORS_BLOCKED') {
@@ -130,12 +132,20 @@ export default function LandingPage() {
         setCorsIdB(idB)
         setPageState('cors_fallback')
       } else if (msg === 'CUBE_NOT_FOUND') {
-        setFetchError('Cube not found — check that both IDs are correct and public on CubeCobra.')
+        setFetchError("Cube not found — IDs are case-sensitive, so double-check for typos. Make sure both cubes are public on CubeCobra.")
         setPageState('form')
       } else {
         setFetchError('Failed to load cube data. Please try again.')
         setPageState('form')
       }
+      return
+    }
+
+    try {
+      await createReviewAndRedirect(idA, idB, diff)
+    } catch (e) {
+      setFetchError('Failed to create review. Please try again.')
+      setPageState('form')
     }
   }
 
@@ -176,6 +186,7 @@ export default function LandingPage() {
     }
   }
 
+  const [showBuildDetails, setShowBuildDetails] = useState(false)
   const canStart = cubeAInput.trim().length > 0 && cubeBInput.trim().length > 0
 
   // ── CORS fallback ──────────────────────────────────────────────────────────
@@ -200,9 +211,9 @@ export default function LandingPage() {
                 >
                   ← Back
                 </button>
-                <p className="text-amber-400 font-medium">CubeCobra blocked the automatic import</p>
+                <p className="text-amber-400 font-medium">Couldn't import automatically</p>
                 <p className="text-sm text-slate-400 mt-1">
-                  You can still create the review manually in three quick steps.
+                  Your browser couldn't reach CubeCobra directly. You can still create the review manually in three quick steps.
                 </p>
               </div>
               <Notice tone="info" title="Manual import steps">
@@ -409,28 +420,38 @@ export default function LandingPage() {
         </main>
 
         {/* Footer */}
-        <footer className="flex items-center justify-center gap-6 px-6 py-4 border-t border-slate-800/80 text-sm text-slate-500">
-          <a
-            href="https://github.com/NMaass/cube-merge"
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1.5 hover:text-slate-300 transition-colors"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
-            </svg>
-            GitHub
-          </a>
-          <a
-            href="mailto:nicholasfmaassen@gmail.com"
-            className="flex items-center gap-1.5 hover:text-slate-300 transition-colors"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <rect x="2" y="4" width="20" height="16" rx="2"/>
-              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-            </svg>
-            Contact
-          </a>
+        <footer className="px-6 py-4 border-t border-slate-800/80 text-sm text-slate-500">
+          <div className="flex items-center justify-center gap-6">
+            <a
+              href="https://github.com/NMaass/cube-merge"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 hover:text-slate-300 transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+              </svg>
+              GitHub
+            </a>
+            <a
+              href="mailto:nicholasfmaassen@gmail.com"
+              className="flex items-center gap-1.5 hover:text-slate-300 transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="2" y="4" width="20" height="16" rx="2"/>
+                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+              </svg>
+              Contact
+            </a>
+            <button
+              type="button"
+              onClick={() => setShowBuildDetails(v => !v)}
+              className="hover:text-slate-300 transition-colors"
+            >
+              Build Details
+            </button>
+          </div>
+          <BuildInfoDisplay isOpen={showBuildDetails} />
         </footer>
       </div>
     </>

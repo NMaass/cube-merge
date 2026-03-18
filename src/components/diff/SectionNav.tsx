@@ -48,11 +48,11 @@ export function SectionNav({
     }
   }
 
-  const btnClass = `h-auto min-h-[44px] sm:h-8 sm:min-h-0 px-2.5 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40
+  const btnClass = `flex items-center justify-center h-auto min-h-[44px] min-w-[44px] sm:h-8 sm:min-h-0 sm:min-w-0 sm:w-8 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40
     disabled:cursor-not-allowed text-slate-200 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500`
 
   return (
-    <div className={`flex items-center gap-1 min-w-0 ${disabled ? 'opacity-30 pointer-events-none' : ''}`}>
+    <div className={`flex items-center justify-center gap-1 min-w-0 ${disabled ? 'opacity-30 pointer-events-none' : ''}`}>
       <button 
         onClick={onPrev} 
         disabled={disabled || currentIndex === 0} 

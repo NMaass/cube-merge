@@ -104,11 +104,15 @@ export async function fetchCubeCobraList(cubeId: string): Promise<CubeCard[]> {
         signal: AbortSignal.timeout(10000),
       })
 
-      // Only count as a real CubeCobra response if content-type is JSON.
-      // In production, /cubecobra/* hits Firebase's SPA catch-all and returns
-      // index.html (text/html), which must not be mistaken for a server reply.
+      // In production we fetch cubecobra.com directly, so any HTTP response
+      // (even a 404 HTML page for a missing cube) proves the server is reachable.
+      // In dev we go through a Vite proxy; if the proxy isn't running Firebase's
+      // SPA catch-all returns index.html — only trust JSON responses there.
       const contentType = response.headers.get('content-type') || ''
-      if (contentType.includes('application/json')) gotAnyResponse = true
+      const isRealServerResponse = !import.meta.env.DEV || contentType.includes('application/json')
+      // Only a 404 definitively means the cube ID is bad.
+      // 429/5xx are transient server errors — don't conflate them with a missing cube.
+      if (isRealServerResponse && (response.ok || response.status === 404)) gotAnyResponse = true
       if (import.meta.env.DEV) console.log(`[CubeCobra] ${url} → ${response.status} (${contentType})`)
 
       if (!response.ok) continue
