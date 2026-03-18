@@ -5,7 +5,7 @@ import { Button } from '../ui/Button'
 import { Textarea } from '../ui/Textarea'
 import { SuggestionMenu } from '../ui/SuggestionMenu'
 import { useAutocomplete } from '../../hooks/useAutocomplete'
-import { useAuth } from '../../context/AuthContext'
+import { ReviewerNameBadge } from '../ui/ReviewerNameBadge'
 import { useEditMode } from '../../context/EditModeContext'
 import { getCachedImage } from '../../lib/imageCache'
 import { FullscreenCardModal } from '../cards/FullscreenCardModal'
@@ -82,12 +82,9 @@ function PreviewableCardRow({ card, colorClass, prefix, onPreview }: {
 }
 
 export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCards, onSave, forceType, allDiffCards, reviewerNames }: ChangeModalProps) {
-  const { identity, setName } = useAuth()
   const { actionType, clearSelection } = useEditMode()
   const [comment, setComment] = useState('')
   const [unresolved, setUnresolved] = useState(false)
-  const [editingAuthor, setEditingAuthor] = useState(false)
-  const [authorInput, setAuthorInput] = useState('')
   const [previewCard, setPreviewCard] = useState<CubeCard | null>(null)
 
   const type = forceType ?? actionType ?? 'add'
@@ -102,8 +99,6 @@ export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCar
   // Reset transient state when modal closes
   useEffect(() => {
     if (!open) {
-      setEditingAuthor(false)
-      setAuthorInput('')
       setPreviewCard(null)
       dismiss()
     }
@@ -173,52 +168,7 @@ export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCar
         </label>
 
         <div className="flex items-center justify-between">
-          {editingAuthor ? (
-            <form
-              className="flex items-center gap-1"
-              onSubmit={e => {
-                e.preventDefault()
-                const trimmed = authorInput.trim()
-                if (trimmed) setName(trimmed)
-                setEditingAuthor(false)
-              }}
-            >
-              <input
-                autoFocus
-                type="text"
-                value={authorInput}
-                onChange={e => setAuthorInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Escape') setEditingAuthor(false) }}
-                placeholder="Your name"
-                aria-label="Your display name"
-                className="h-8 w-28 bg-slate-700 border border-slate-600 rounded px-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
-              />
-              <button
-                type="submit"
-                disabled={!authorInput.trim()}
-                className="px-2 py-1 text-xs text-amber-400 hover:text-amber-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditingAuthor(false)}
-                aria-label="Cancel name edit"
-                className="px-2 py-1 text-xs text-slate-500 hover:text-slate-300 transition-colors rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-slate-500"
-              >
-                ✕
-              </button>
-            </form>
-          ) : (
-            <button
-              type="button"
-              onClick={() => { setAuthorInput(identity.displayName === 'Reviewer' ? '' : identity.displayName); setEditingAuthor(true) }}
-              className="text-xs text-slate-400 hover:text-slate-200 transition-colors rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
-              aria-label={`Posting as ${identity.displayName} — click to change name`}
-            >
-              as <strong className="text-slate-300">{identity.displayName}</strong>
-            </button>
-          )}
+          <ReviewerNameBadge />
           <div className="flex gap-2">
             <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
             <Button onClick={handleSave} size="sm">Save</Button>

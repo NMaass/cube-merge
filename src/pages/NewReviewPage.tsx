@@ -735,16 +735,16 @@ export default function NewReviewPage() {
           <div className="space-y-3">
             <p className="text-red-400 font-medium">Cube not found</p>
             <p className="text-sm text-slate-400">
-              Check that both IDs are correct and the cubes are public on CubeCobra.
+              IDs are case-sensitive — double-check for typos. Make sure both cubes are public on CubeCobra.
             </p>
             <a href="/" className="text-amber-400 hover:text-amber-300 text-sm">← Go back</a>
           </div>
         ) : errorKind === 'CORS_BLOCKED' ? (
           <div className="space-y-4">
             <div>
-              <p className="text-amber-400 font-medium">CubeCobra blocked the request</p>
+              <p className="text-amber-400 font-medium">Couldn't import automatically</p>
               <p className="text-sm text-slate-400 mt-1">
-                Open each URL below, copy the full JSON, and paste it here.
+                Your browser couldn't reach CubeCobra directly. Open each URL below, copy the full JSON, and paste it here.
               </p>
             </div>
             <div className="space-y-2">

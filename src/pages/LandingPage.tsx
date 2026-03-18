@@ -130,7 +130,7 @@ export default function LandingPage() {
         setCorsIdB(idB)
         setPageState('cors_fallback')
       } else if (msg === 'CUBE_NOT_FOUND') {
-        setFetchError('Cube not found — check that both IDs are correct and public on CubeCobra.')
+        setFetchError("Cube not found — IDs are case-sensitive, so double-check for typos. Make sure both cubes are public on CubeCobra.")
         setPageState('form')
       } else {
         setFetchError('Failed to load cube data. Please try again.')
@@ -200,9 +200,9 @@ export default function LandingPage() {
                 >
                   ← Back
                 </button>
-                <p className="text-amber-400 font-medium">CubeCobra blocked the automatic import</p>
+                <p className="text-amber-400 font-medium">Couldn't import automatically</p>
                 <p className="text-sm text-slate-400 mt-1">
-                  You can still create the review manually in three quick steps.
+                  Your browser couldn't reach CubeCobra directly. You can still create the review manually in three quick steps.
                 </p>
               </div>
               <Notice tone="info" title="Manual import steps">

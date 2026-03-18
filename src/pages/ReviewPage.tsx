@@ -652,7 +652,7 @@ function ReviewWorkspace({
               {resolvedCount}/{changes.length}
             </span>
           )}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 flex justify-center">
             <SectionNav
               currentIndex={currentIndex}
               total={total}
@@ -735,7 +735,7 @@ function ReviewWorkspace({
                 size="sm"
                 onClick={() => setShareMenuOpen(v => !v)}
                 aria-label="Share"
-                className={`min-h-[44px] sm:min-h-0 px-3 ${linkCopyPop ? 'copy-pop' : ''}`}
+                className={`min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 px-3 ${linkCopyPop ? 'copy-pop' : ''}`}
               >
                 {linkCopied
                   ? <svg className="w-3.5 h-3.5 text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
@@ -761,15 +761,6 @@ function ReviewWorkspace({
                 </div>
               )}
             </div>
-            {/* Name / avatar — always just the avatar button; editing opens a modal */}
-            <button
-              onClick={() => { setNameInput(identity.displayName === 'Reviewer' ? '' : identity.displayName); setEditingName(true) }}
-              className={`h-8 w-8 min-h-[44px] sm:min-h-0 rounded-full flex items-center justify-center text-[11px] font-bold uppercase text-slate-200 transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800 ${nameSaved ? 'avatar-saved' : ''} ${identity.displayName === 'Reviewer' ? 'bg-amber-700 hover:bg-amber-600 ring-2 ring-amber-500/50' : 'bg-slate-600 hover:bg-slate-500'}`}
-              title={identity.displayName === 'Reviewer' ? 'Tap to set your name' : `Reviewing as ${identity.displayName} — tap to change`}
-              aria-label={identity.displayName === 'Reviewer' ? 'Set your name' : `Your name: ${identity.displayName}. Tap to change.`}
-            >
-              {identity.displayName[0]}
-            </button>
           </div>
         </header>
         {actionError ? (
