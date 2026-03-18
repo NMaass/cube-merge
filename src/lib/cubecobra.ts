@@ -110,7 +110,9 @@ export async function fetchCubeCobraList(cubeId: string): Promise<CubeCard[]> {
       // SPA catch-all returns index.html — only trust JSON responses there.
       const contentType = response.headers.get('content-type') || ''
       const isRealServerResponse = !import.meta.env.DEV || contentType.includes('application/json')
-      if (isRealServerResponse) gotAnyResponse = true
+      // Only a 404 definitively means the cube ID is bad.
+      // 429/5xx are transient server errors — don't conflate them with a missing cube.
+      if (isRealServerResponse && (response.ok || response.status === 404)) gotAnyResponse = true
       if (import.meta.env.DEV) console.log(`[CubeCobra] ${url} → ${response.status} (${contentType})`)
 
       if (!response.ok) continue
