@@ -117,13 +117,14 @@ export default function LandingPage() {
     setPageState('loading')
     setFetchError(null)
     setManualError(null)
+
+    let diff: { onlyA: CubeCard[]; onlyB: CubeCard[] }
     try {
       const [cardsA, cardsB] = await Promise.all([
         fetchCubeCobraList(idA),
         fetchCubeCobraList(idB),
       ])
-      const diff = computeDiff(cardsA, cardsB)
-      await createReviewAndRedirect(idA, idB, diff)
+      diff = computeDiff(cardsA, cardsB)
     } catch (e) {
       const msg = e instanceof Error ? e.message : ''
       if (msg === 'CORS_BLOCKED') {
@@ -137,6 +138,14 @@ export default function LandingPage() {
         setFetchError('Failed to load cube data. Please try again.')
         setPageState('form')
       }
+      return
+    }
+
+    try {
+      await createReviewAndRedirect(idA, idB, diff)
+    } catch (e) {
+      setFetchError('Failed to create review. Please try again.')
+      setPageState('form')
     }
   }
 
