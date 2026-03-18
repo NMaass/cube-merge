@@ -346,8 +346,13 @@ export function ReviewWorkspace({
       </Helmet>
       <div className="h-dvh bg-slate-900 flex flex-col overflow-hidden">
         {/* Unified sticky header — single row on all screen sizes */}
-        <header className="shrink-0 flex items-center gap-1.5 px-2 py-2 bg-slate-800 border-b border-slate-700 overflow-x-hidden">
-          <ModeToggle mode={mode} onChange={setMode} />
+        <header className="shrink-0 grid grid-cols-[1fr_auto_1fr] items-center px-2 py-2 bg-slate-800 border-b border-slate-700">
+          {/* Left column */}
+          <div className="flex items-center gap-1.5">
+            <ModeToggle mode={mode} onChange={setMode} />
+          </div>
+
+          {/* Center column — always truly centered */}
           <SectionNav
             currentIndex={currentIndex}
             total={total}
@@ -359,33 +364,33 @@ export function ReviewWorkspace({
             disabled={mode === 'view'}
           />
 
-          {/* Action buttons — desktop only, edit mode */}
-          {mode === 'edit' && hasSelection && (
-            <div className="hidden md:flex items-center gap-1.5">
-              <Button
-                onClick={() => setModalOpen(true)}
-                size="sm"
-                variant={hasLeft && !hasRight ? 'danger' : 'primary'}
-              >
-                {actionLabel}
-              </Button>
-              {hasLeft && !hasRight && (
-                <Button size="sm" variant="keep" onClick={handleKeepCards}>
-                  Keep
+          {/* Right column */}
+          <div className="flex items-center justify-end gap-1 min-w-0">
+            {/* Action buttons — desktop only, edit mode */}
+            {mode === 'edit' && hasSelection && (
+              <div className="hidden md:flex items-center gap-1.5 shrink-0">
+                <Button
+                  onClick={() => setModalOpen(true)}
+                  size="sm"
+                  variant={hasLeft && !hasRight ? 'danger' : 'primary'}
+                >
+                  {actionLabel}
                 </Button>
-              )}
-              {hasRight && !hasLeft && (
-                <Button size="sm" variant="reject" onClick={handleRejectCards}>
-                  Reject
+                {hasLeft && !hasRight && (
+                  <Button size="sm" variant="keep" onClick={handleKeepCards}>
+                    Keep
+                  </Button>
+                )}
+                {hasRight && !hasLeft && (
+                  <Button size="sm" variant="reject" onClick={handleRejectCards}>
+                    Reject
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" onClick={clearSelection}>
+                  ✕
                 </Button>
-              )}
-              <Button variant="ghost" size="sm" onClick={clearSelection}>
-                ✕
-              </Button>
-            </div>
-          )}
-
-          <div className="ml-auto flex items-center gap-1 min-w-0">
+              </div>
+            )}
             {exportError && (
               <span className="hidden sm:inline text-xs text-red-400 max-w-[140px] truncate" title={exportError}>
                 Share failed
@@ -420,10 +425,9 @@ export function ReviewWorkspace({
                 }
               </button>
             )}
-            {/* Export: text on sm+, icon on mobile */}
-            <Button variant="secondary" size="sm" onClick={() => { setCopyTab('summary'); setCopyModalOpen(true) }} aria-label="Export changes">
-              <svg className="w-3.5 h-3.5 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-              <span className="hidden sm:inline">Export</span>
+            {/* Export: hidden on mobile, text on sm+ */}
+            <Button variant="secondary" size="sm" onClick={() => { setCopyTab('summary'); setCopyModalOpen(true) }} aria-label="Export changes" className="hidden sm:inline-flex">
+              Export
             </Button>
             {/* Share / Re-snap */}
             <Button variant="primary" size="sm" onClick={handleExport} disabled={exporting} aria-label={shareUrl ? 'Re-snap review' : 'Share review'}>

@@ -213,7 +213,7 @@ export default function ChangelogPage() {
         <header className="shrink-0 flex items-center gap-3 px-4 py-3 bg-slate-800 border-b border-slate-700">
           <Link
             to={`/c/${reviewId}?mode=view`}
-            className="flex items-center gap-1.5 p-1 -ml-1 rounded text-slate-400 hover:text-slate-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800"
+            className="flex items-center justify-center min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 sm:h-8 sm:w-8 -ml-1 rounded text-slate-400 hover:text-slate-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800"
             aria-label="Back to review"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
