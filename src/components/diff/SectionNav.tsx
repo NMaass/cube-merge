@@ -48,7 +48,7 @@ export function SectionNav({
     }
   }
 
-  const btnClass = `flex items-center justify-center h-auto min-h-[44px] min-w-[44px] sm:h-8 sm:min-h-0 sm:min-w-0 sm:w-8 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40
+  const btnClass = `touch-target flex items-center justify-center h-8 w-8 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40
     disabled:cursor-not-allowed text-slate-200 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500`
 
   return (
@@ -75,7 +75,7 @@ export function SectionNav({
         title="Type a section (e.g. 3G, C4, Land, 6+W)"
         aria-label="Navigate to section"
         aria-describedby="section-nav-instructions"
-        className={`h-auto min-h-[44px] sm:h-8 sm:min-h-0 w-16 sm:w-20 bg-slate-700 border rounded px-1.5 text-sm font-mono text-slate-200 text-center focus:outline-none focus:ring-1 focus:border-transparent ${sectionComplete ? 'border-green-500 ring-1 ring-green-500 text-green-300' : 'border-slate-600 focus:ring-amber-500 focus:border-amber-500'}`}
+        className={`h-8 w-16 sm:w-20 bg-slate-700 border rounded px-1.5 text-sm font-mono text-slate-200 text-center focus:outline-none focus:ring-1 focus:border-transparent ${sectionComplete ? 'border-green-500 ring-1 ring-green-500 text-green-300' : 'border-slate-600 focus:ring-amber-500 focus:border-amber-500'}`}
         spellCheck={false}
       />
       <div id="section-nav-instructions" className="sr-only">
