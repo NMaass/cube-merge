@@ -28,7 +28,7 @@ A collaborative review tool for Magic: The Gathering cube curators. Compare two 
 
 ## Example review
 
-**[→ See a real review in action](https://cube-merge.pages.dev/c/JKVqdH1964)**
+**[→ See a real review in action](https://cube-merge.pages.dev/c/4zao1QMxNz)**
 
 ## Running locally
 
