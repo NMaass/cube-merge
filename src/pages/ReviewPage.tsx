@@ -634,6 +634,21 @@ function ReviewWorkspace({
     return allCards.every(c => cardInChanges.has(c.name))
   }, [sections, currentIndex, cardInChanges])
 
+  // Auto-scroll to first incomplete section on initial load
+  const didInitialScroll = useRef(false)
+  useEffect(() => {
+    if (changesLoading || didInitialScroll.current) return
+    didInitialScroll.current = true
+    if (changes.length === 0) return
+    const firstIncomplete = sections.findIndex(sec => {
+      const allCards = [...sec.cardsA, ...sec.cardsB]
+      return allCards.length > 0 && !allCards.every(c => cardInChanges.has(c.name))
+    })
+    if (firstIncomplete > 0) {
+      setTimeout(() => goTo(firstIncomplete), 150)
+    }
+  }, [changesLoading])
+
   return (
     <>
       <Helmet>
