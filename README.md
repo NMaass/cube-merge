@@ -2,19 +2,33 @@
 
 A collaborative review tool for Magic: The Gathering cube curators. Compare two cube lists side-by-side, annotate proposed changes, and work with your playgroup in real-time — no accounts required.
 
-**[→ Try it live](https://cube-merge.pages.dev)**
+![Cube Merge demo](docs/demo.gif)
 
-## What it does
+**[Try it live →](https://cube-merge.pages.dev)**
 
-Cube Merge lets you load two CubeCobra cubes and start a shared review session. You select cards from the diff, group them into changes (add, remove, swap, keep, or reject), and leave comments for your group to discuss. Everyone works in the same session simultaneously — changes sync live across devices.
+## How it works
 
-Notable features:
-- **Real-time collaboration** — anonymous, no sign-in needed; just share the link
-- **Session changelog** — all work is grouped by author and time into sessions, with full edit history
-- **Branching** — fork a review from any set of sessions to continue work in a new direction
-- **Card images** — hover to preview, click to enlarge; images are cached across all users
+1. **Paste two CubeCobra cube IDs** (or a compare URL) on the landing page
+2. **See the diff** — cards are grouped by color and section, with removals on the left and additions on the right
+3. **Select cards and propose changes** — swaps, adds, cuts, keeps, or rejects — and leave comments for your group
+4. **Share the link** — everyone edits the same session live, no sign-up needed
+
+## Features
+
+- **Real-time collaboration** — anonymous, no sign-in; just share the link
+- **Change types** — swap, add, remove, keep, reject
+- **Comment threads** — discuss each change with your playgroup
+- **Session changelog** — all work grouped by author and time, with full edit history
+- **Branching** — fork a review from any set of sessions to continue in a new direction
+- **Card image previews** — hover to preview, click to enlarge (Scryfall)
 - **Export** — copy results as a summary or as CubeCobra-ready add/remove lists
-- **CubeCobra integration** — paste a cube ID, URL, or compare URL to get started instantly
+- **Mobile-friendly** — works on phones and tablets
+
+![Change cards with comments and author badges](docs/view-changes.png)
+
+## Example review
+
+**[→ See a real review in action](https://cube-merge.pages.dev/c/JKVqdH1964)**
 
 ## Running locally
 
@@ -28,16 +42,8 @@ bun dev
 
 See `.env.example` for the required environment variables.
 
-## Example review
-
-Add a concrete walkthrough here once you have one ready. A good example section should include:
-- the two source cubes or compare URL
-- a link to the generated review
-- a short before/after summary of the changes discussed
-- one screenshot or GIF of the review UI
-
-This is worth adding for first-time users because the app is more immediately understandable when they can inspect a real review before creating their own.
-
 ## Tech stack
 
-Vite · React · TypeScript · Firebase Firestore · Tailwind CSS
+Vite · React · TypeScript · Firebase Firestore · Tailwind CSS · Cloudflare Pages
+
+Built with [Claude Code](https://claude.ai/code).

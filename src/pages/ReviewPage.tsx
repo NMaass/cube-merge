@@ -79,7 +79,7 @@ function ReviewWorkspace({
     identity.displayName === 'Reviewer' ? '' : identity.displayName
   )
   const [editingName, setEditingName] = useState(false)
-  const [nameSaved, setNameSaved] = useState(false)
+
   const [actionError, setActionError] = useState<string | null>(null)
   const [shareMenuOpen, setShareMenuOpen] = useState(false)
   const shareMenuRef = useRef<HTMLDivElement>(null)
@@ -444,9 +444,6 @@ function ReviewWorkspace({
     if (!trimmed) return
     setName(trimmed)
     setEditingName(false)
-    setNameSaved(true)
-    setTimeout(() => setNameSaved(false), 700)
-
     // Retroactively update attribution on this user's existing changes and comments.
     const updatedChanges = changes.map(change => ({
       ...change,

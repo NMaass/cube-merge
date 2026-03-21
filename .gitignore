@@ -4,3 +4,5 @@ dist
 .env.local
 .firebase
 public/build-info.json
+/*.png
+~.bashrc
