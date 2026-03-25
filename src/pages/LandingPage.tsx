@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from '../lib/router'
+import { useNavigate, useSearchParams } from '../lib/router'
 import { BuildInfoDisplay } from '../components/ui/BuildInfoDisplay'
 import { Helmet } from 'react-helmet-async'
 import { nanoid } from 'nanoid'
@@ -53,8 +53,9 @@ function parseCardsFromJson(raw: unknown): CubeCard[] {
 
 export default function LandingPage() {
   const navigate = useNavigate()
-  const [cubeAInput, setCubeAInput] = useState('')
-  const [cubeBInput, setCubeBInput] = useState('')
+  const [searchParams] = useSearchParams()
+  const [cubeAInput, setCubeAInput] = useState(searchParams.get('a') || '')
+  const [cubeBInput, setCubeBInput] = useState(searchParams.get('b') || '')
   const [validationError, setValidationError] = useState<string | null>(null)
   const [pageState, setPageState] = useState<PageState>('form')
   const [fetchError, setFetchError] = useState<string | null>(null)

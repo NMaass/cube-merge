@@ -28,7 +28,7 @@ A collaborative review tool for Magic: The Gathering cube curators. Compare two 
 
 ## Example review
 
-**[→ See a real review in action](https://cube-merge.pages.dev/c/4zao1QMxNz)**
+**[→ Try it with LSVCube vs modovintage](https://cube-merge.pages.dev/?a=LSVCube&b=modovintage)**
 
 ## Running locally
 
