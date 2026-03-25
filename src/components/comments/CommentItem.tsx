@@ -3,11 +3,16 @@ import { createPortal } from 'react-dom'
 import { Comment, CommentResolution } from '../../types/firestore'
 import { getCachedImage } from '../../lib/imageCache'
 import { useAuth } from '../../context/AuthContext'
+import { useAutocomplete } from '../../hooks/useAutocomplete'
+import { SuggestionMenu } from '../ui/SuggestionMenu'
+import { Textarea } from '../ui/Textarea'
 
 interface CommentItemProps {
   comment: Comment
   onSetResolution?: (resolution: CommentResolution) => void
   onEdit?: (newBody: string) => void
+  diffCards?: string[]
+  reviewerNames?: string[]
 }
 
 /** Renders comment body — [[Card Name]] patterns become hoverable card mentions */
@@ -64,7 +69,7 @@ function CommentBody({ body }: { body: string }) {
                 setHoverCard(null)
               }}
             >
-              <svg className="w-2.5 h-2.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7l9-4 9 4M3 7v10l9 4 9-4V7" /></svg>
+              <svg className="w-2.5 h-2.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect x="4" y="2" width="16" height="20" rx="2" strokeWidth={2} /><circle cx="12" cy="12" r="3" strokeWidth={2} /></svg>
               {seg.text}
             </span>
           )
@@ -88,10 +93,12 @@ function CommentBody({ body }: { body: string }) {
   )
 }
 
-export function CommentItem({ comment, onSetResolution, onEdit }: CommentItemProps) {
+export function CommentItem({ comment, onSetResolution, onEdit, diffCards = [], reviewerNames = [] }: CommentItemProps) {
   const { identity } = useAuth()
   const [editing, setEditing] = useState(false)
   const [editBody, setEditBody] = useState('')
+  const { textareaRef, suggestions, anchor, onTextareaChange, applySuggestion, dismiss } =
+    useAutocomplete({ diffCards, reviewerNames })
 
   const date = comment.createdAt?.toDate?.()?.toLocaleDateString() || ''
   const isResolved = comment.resolution === 'resolved'
@@ -164,17 +171,30 @@ export function CommentItem({ comment, onSetResolution, onEdit }: CommentItemPro
 
         {editing ? (
           <div className="space-y-2">
-            <textarea
-              autoFocus
-              value={editBody}
-              onChange={e => setEditBody(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Escape') cancelEdit()
-                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveEdit() }
-              }}
-              rows={3}
-              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
-            />
+            <div className="relative">
+              <Textarea
+                ref={textareaRef}
+                autoFocus
+                value={editBody}
+                onChange={e => {
+                  setEditBody(e.target.value)
+                  onTextareaChange(e.target.value, e.target.selectionStart ?? e.target.value.length)
+                }}
+                onKeyDown={e => {
+                  if (e.key === 'Escape') {
+                    if (suggestions.length > 0) { dismiss(); return }
+                    cancelEdit()
+                  }
+                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveEdit() }
+                }}
+                rows={3}
+              />
+              <SuggestionMenu
+                suggestions={suggestions}
+                anchor={anchor}
+                onSelect={s => applySuggestion(s, editBody, setEditBody)}
+              />
+            </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={saveEdit}

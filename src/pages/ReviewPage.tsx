@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams, Link } from '../lib/router'
 import { getCachedReview, setCachedReview } from '../lib/reviewCache'
 import { Helmet } from 'react-helmet-async'
@@ -614,6 +614,7 @@ function ReviewWorkspace({
 
   const reviewerNames = useMemo(() => [...new Set([
     ...changes.map(c => c.authorName).filter(Boolean),
+    ...changes.flatMap(c => c.comments.map(cm => cm.authorName)).filter(Boolean),
     ...(identity.displayName !== 'Reviewer' ? [identity.displayName] : []),
   ])], [changes, identity.displayName])
 
@@ -634,11 +635,9 @@ function ReviewWorkspace({
     return allCards.every(c => cardInChanges.has(c.name))
   }, [sections, currentIndex, cardInChanges])
 
-  // Auto-scroll to first incomplete section on initial load
+  // Auto-scroll to first incomplete section on initial load (or first switch to edit mode)
   const didInitialScroll = useRef(false)
-  useEffect(() => {
-    if (changesLoading || didInitialScroll.current) return
-    didInitialScroll.current = true
+  const scrollToFirstIncomplete = useCallback(() => {
     if (changes.length === 0) return
     const firstIncomplete = sections.findIndex(sec => {
       const allCards = [...sec.cardsA, ...sec.cardsB]
@@ -647,7 +646,14 @@ function ReviewWorkspace({
     if (firstIncomplete > 0) {
       setTimeout(() => goTo(firstIncomplete), 150)
     }
-  }, [changesLoading])
+  }, [changes, sections, cardInChanges, goTo])
+
+  useEffect(() => {
+    if (changesLoading || didInitialScroll.current) return
+    if (mode !== 'edit') return          // defer until edit mode is active
+    didInitialScroll.current = true
+    scrollToFirstIncomplete()
+  }, [changesLoading, mode, scrollToFirstIncomplete])
 
   return (
     <>

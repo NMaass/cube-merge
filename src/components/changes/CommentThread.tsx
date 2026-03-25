@@ -20,6 +20,8 @@ export function CommentThread({ comments, onAddComment, onSetResolution, onEditC
           comment={comment}
           onSetResolution={onSetResolution ? (res) => onSetResolution(comment.id, res) : undefined}
           onEdit={onEditComment ? (newBody) => onEditComment(comment.id, newBody) : undefined}
+          diffCards={diffCards}
+          reviewerNames={reviewerNames}
         />
       ))}
       {onAddComment && (

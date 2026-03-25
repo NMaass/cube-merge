@@ -17,11 +17,13 @@ export function useSectionNav(sections: Section[]) {
       const panel = el.closest('.overflow-y-auto') as HTMLElement | null
       if (!panel) continue
       // Offset past the sticky panel header ("Removals" / "Additions")
-      const stickyHeader = panel.querySelector('.sticky') as HTMLElement | null
-      const headerHeight = stickyHeader ? stickyHeader.getBoundingClientRect().height : 34
-      const panelRect = panel.getBoundingClientRect()
+      // Use the bottom edge of the sticky header so the section header sits flush beneath it
+      const stickyHeader = panel.querySelector(':scope > .sticky') as HTMLElement | null
+      const stickyBottom = stickyHeader
+        ? stickyHeader.getBoundingClientRect().bottom
+        : panel.getBoundingClientRect().top + 34
       const elRect = el.getBoundingClientRect()
-      panel.scrollTo({ top: panel.scrollTop + elRect.top - panelRect.top - headerHeight, behavior: 'smooth' })
+      panel.scrollTo({ top: panel.scrollTop + elRect.top - stickyBottom, behavior: 'smooth' })
     }
   }
 

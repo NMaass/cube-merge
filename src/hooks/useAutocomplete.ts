@@ -53,13 +53,15 @@ function getCaretCoords(el: HTMLTextAreaElement, pos: number): CaretAnchor {
   mirror.appendChild(marker)
 
   const elRect = el.getBoundingClientRect()
+  const style = window.getComputedStyle(el)
+  const borderTop = parseFloat(style.borderTopWidth) || 0
   const markerTop = marker.offsetTop
   const markerLeft = marker.offsetLeft
   const markerHeight = marker.offsetHeight
 
   return {
-    top: elRect.top - el.scrollTop + markerTop,
-    left: elRect.left + markerLeft,
+    top: elRect.top + borderTop - el.scrollTop + markerTop,
+    left: elRect.left + borderTop + markerLeft,
     lineHeight: markerHeight,
   }
 }
