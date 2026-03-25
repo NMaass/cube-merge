@@ -43,7 +43,6 @@ export function SplitChangeModal({ open, onClose, change, onSplit }: SplitChange
       { cardsOut: remainingOut, cardsIn: remainingIn, type: remainingType },
       { cardsOut: splitOutCards, cardsIn: splitInCards, type: newType, comment }
     )
-    onClose()
   }
 
   return (

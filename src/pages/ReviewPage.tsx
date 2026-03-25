@@ -347,7 +347,7 @@ function ReviewWorkspace({
       payload: { before: cleanForFirestore(original), after: cleanForFirestore(afterOriginal) },
     })
 
-    // Create split-off change
+    // Create split-off change (fork comment history from parent)
     const newId = nanoid(8)
     const freshChange: LiveChange = {
       id: newId,
@@ -360,7 +360,7 @@ function ReviewWorkspace({
       authorPhotoURL: identity.photoURL,
       unresolved: false,
       createdAt: now,
-      comments: [],
+      comments: original.comments.map(c => ({ ...c })),
     }
     batch.set(
       doc(db, 'reviews', reviewId, 'changes', newId),
@@ -378,6 +378,8 @@ function ReviewWorkspace({
     try {
       await batch.commit()
       setActionError(null)
+      setSplittingChange(null)
+      setEditingChange(freshChange)
     } catch (e) {
       showActionError('The split could not be saved. Please try again.', e)
     }
