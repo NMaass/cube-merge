@@ -1,16 +1,37 @@
-import { useState } from 'react'
-import { getCachedImage } from '../../lib/imageCache'
+import { useEffect, useState } from 'react'
+import { getCachedImage, setCachedImages } from '../../lib/imageCache'
+import { fetchSingleCardImage } from '../../lib/scryfall'
 import { CardHoverPortal } from '../cards/CardHoverPortal'
 import { FullscreenCardModal } from '../cards/FullscreenCardModal'
 import { useCardHoverPreview } from '../../hooks/useCardHoverPreview'
 
 /** Inline card mention — styled as underlined colored text.
  *  Desktop: hover shows floating card preview.
- *  Mobile: tap opens fullscreen card modal. */
+ *  Mobile: tap opens fullscreen card modal.
+ *  Fetches from Scryfall on mount if image is not already cached. */
 function CardMention({ name, colorClass }: { name: string; colorClass: string }) {
   const { hoverPos, setPosition, close } = useCardHoverPreview()
   const [previewOpen, setPreviewOpen] = useState(false)
-  const imageUrl = getCachedImage(name) ?? undefined
+  const [imageUrl, setImageUrl] = useState(() => getCachedImage(name))
+  const [fetching, setFetching] = useState(false)
+
+  // Fetch image from Scryfall if not cached
+  useEffect(() => {
+    if (imageUrl || fetching) return
+    let cancelled = false
+    setFetching(true)
+    fetchSingleCardImage(name).then(fresh => {
+      if (cancelled) return
+      const url = fresh.get(name.toLowerCase())
+      if (url) {
+        setCachedImages(fresh)
+        setImageUrl(url)
+      }
+    }).catch(() => {}).finally(() => {
+      if (!cancelled) setFetching(false)
+    })
+    return () => { cancelled = true }
+  }, [name, imageUrl, fetching])
 
   return (
     <>
@@ -30,6 +51,7 @@ function CardMention({ name, colorClass }: { name: string; colorClass: string })
         onClose={() => setPreviewOpen(false)}
         cardName={name}
         imageUrl={imageUrl}
+        loading={fetching}
       />
     </>
   )
