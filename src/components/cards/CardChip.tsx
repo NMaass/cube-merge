@@ -1,9 +1,8 @@
 import { CubeCard } from '../../types/cube'
+import { CardState } from '../../types/cardState'
 import { ManaCostPips } from './ManaCostPips'
 import { CardHoverPortal } from './CardHoverPortal'
 import { useCardHoverPreview } from '../../hooks/useCardHoverPreview'
-
-type CardState = 'normal' | 'selected' | 'accepted' | 'removed'
 
 interface CardChipProps {
   card: CubeCard
@@ -22,9 +21,11 @@ export function CardChip({ card, state, imageUrl, onClick }: CardChipProps) {
     selected: 'bg-amber-500 border border-amber-400 text-slate-900',
     accepted: 'bg-transparent border border-green-500 text-green-300 cursor-default',
     removed: 'bg-transparent border border-red-500 text-red-300 cursor-default',
+    kept: 'bg-transparent border border-teal-500 text-teal-300 cursor-default',
+    rejected: 'bg-transparent border border-orange-500 text-orange-300 cursor-default',
   }
 
-  const isLocked = state === 'accepted' || state === 'removed'
+  const isLocked = state === 'accepted' || state === 'removed' || state === 'kept' || state === 'rejected'
 
   return (
     <>

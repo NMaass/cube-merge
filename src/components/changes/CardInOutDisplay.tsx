@@ -1,8 +1,9 @@
-import { useState } from 'react'
-import { createPortal } from 'react-dom'
 import { CubeCard } from '../../types/cube'
 import { ManaCostPips } from '../cards/ManaCostPips'
 import { FullscreenCardModal } from '../cards/FullscreenCardModal'
+import { CardHoverPortal } from '../cards/CardHoverPortal'
+import { useCardHoverPreview } from '../../hooks/useCardHoverPreview'
+import { useCardPreview } from '../../hooks/useCardPreview'
 import { getCachedImage } from '../../lib/imageCache'
 
 interface CardInOutDisplayProps {
@@ -18,27 +19,16 @@ function CardRow({ card, symbol, nameClass, symbolClass, onPreview }: {
   symbolClass: string
   onPreview: () => void
 }) {
-  const [hoverPos, setHoverPos] = useState<{ top: number; left: number } | null>(null)
-  const imageUrl = getCachedImage(card.name)
-
-  function handleMouseMove(e: React.MouseEvent) {
-    if (!imageUrl) return
-    const imgW = 180, imgH = 252
-    let left = e.clientX + 20
-    let top = e.clientY - imgH / 2
-    if (left + imgW > window.innerWidth - 8) left = e.clientX - imgW - 20
-    if (top < 8) top = 8
-    if (top + imgH > window.innerHeight - 8) top = window.innerHeight - imgH - 8
-    setHoverPos({ top, left })
-  }
+  const { hoverPos, setPosition, close } = useCardHoverPreview()
+  const imageUrl = getCachedImage(card.name) ?? undefined
 
   return (
     <>
       <button
-        className={`w-full flex items-center gap-2 px-1.5 py-1 text-left cursor-pointer hover:bg-slate-700/40 active:bg-slate-700/60 rounded-md transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500`}
+        className="w-full flex items-center gap-2 px-1.5 py-1 text-left cursor-pointer hover:bg-slate-700/40 active:bg-slate-700/60 rounded-md transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
         onClick={onPreview}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={() => setHoverPos(null)}
+        onMouseMove={e => imageUrl && setPosition(e.clientX, e.clientY, false)}
+        onMouseLeave={close}
         aria-label={`Preview ${card.name}`}
       >
         <span className={`inline-flex items-center justify-center w-4 h-4 rounded text-[10px] font-bold shrink-0 ${symbolClass}`}>
@@ -47,26 +37,13 @@ function CardRow({ card, symbol, nameClass, symbolClass, onPreview }: {
         <span className={`text-sm font-medium leading-snug truncate ${nameClass}`}>{card.name}</span>
         <ManaCostPips manaCost={card.manaCost} />
       </button>
-      {hoverPos && imageUrl && createPortal(
-        <div
-          className="hidden md:block pointer-events-none"
-          style={{ position: 'fixed', top: hoverPos.top, left: hoverPos.left, zIndex: 9999 }}
-        >
-          <img
-            src={imageUrl}
-            alt={card.name}
-            className="rounded-lg shadow-2xl border border-slate-600/50"
-            style={{ width: 180 }}
-          />
-        </div>,
-        document.body
-      )}
+      <CardHoverPortal hoverPos={hoverPos} imageUrl={imageUrl} cardName={card.name} />
     </>
   )
 }
 
 export function CardInOutDisplay({ cardsIn, cardsOut, type }: CardInOutDisplayProps) {
-  const [previewCard, setPreviewCard] = useState<CubeCard | null>(null)
+  const { setPreviewCard, previewModalProps } = useCardPreview()
 
   const preview = (card: CubeCard) => () => setPreviewCard(card)
 
@@ -102,12 +79,7 @@ export function CardInOutDisplay({ cardsIn, cardsOut, type }: CardInOutDisplayPr
   return (
     <>
       <div className="space-y-0.5">{rows}</div>
-      <FullscreenCardModal
-        open={!!previewCard}
-        onClose={() => setPreviewCard(null)}
-        cardName={previewCard?.name ?? ''}
-        imageUrl={previewCard ? getCachedImage(previewCard.name) ?? undefined : undefined}
-      />
+      <FullscreenCardModal {...previewModalProps} />
     </>
   )
 }

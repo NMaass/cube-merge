@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
-import { Textarea } from '../ui/Textarea'
-import { SuggestionMenu } from '../ui/SuggestionMenu'
-import { useAutocomplete } from '../../hooks/useAutocomplete'
+import { AutocompleteTextarea } from '../ui/AutocompleteTextarea'
 import { CubeCard } from '../../types/cube'
 import { Change, Comment, ChangeType } from '../../types/firestore'
 import { computeChangeType } from '../../lib/changes'
+import { UnresolvedCheckbox } from '../ui/UnresolvedCheckbox'
 import { ChangeTypeBadge } from './ChangeTypeBadge'
 import { CardSearch } from './CardSearch'
 
@@ -30,9 +29,6 @@ export function EditChangeModal({ open, onClose, change, allCardsA, allCardsB, o
   const [cardsOut, setCardsOut] = useState<CubeCard[]>(change.cardsOut)
   const [cardsIn, setCardsIn] = useState<CubeCard[]>(change.cardsIn)
   const [unresolved, setUnresolved] = useState(change.unresolved ?? false)
-
-  const { textareaRef, suggestions, anchor, onTextareaChange, applySuggestion, dismiss } =
-    useAutocomplete({ diffCards, reviewerNames })
 
   const computedType = computeChangeType(cardsOut, cardsIn, change.type)
 
@@ -96,34 +92,15 @@ export function EditChangeModal({ open, onClose, change, allCardsA, allCardsB, o
           <CardSearch label="addition" candidates={availableB} onAdd={c => setCardsIn(prev => [...prev, c])} />
         </div>
 
-        <div className="relative">
-          <Textarea
-            ref={textareaRef}
-            placeholder="Add a note… / for cards, @ for names"
-            value={comment}
-            onChange={e => {
-              setComment(e.target.value)
-              onTextareaChange(e.target.value, e.target.selectionStart ?? e.target.value.length)
-            }}
-            onKeyDown={e => { if (e.key === 'Escape' && suggestions.length > 0) { e.stopPropagation(); dismiss() } }}
-            rows={2}
-          />
-          <SuggestionMenu
-            suggestions={suggestions}
-            anchor={anchor}
-            onSelect={s => applySuggestion(s, comment, setComment)}
-          />
-        </div>
+        <AutocompleteTextarea
+          value={comment}
+          onChange={setComment}
+          diffCards={diffCards}
+          reviewerNames={reviewerNames}
+          rows={2}
+        />
 
-        <label className="flex items-center gap-2 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={unresolved}
-            onChange={e => setUnresolved(e.target.checked)}
-            className="w-3.5 h-3.5 rounded accent-yellow-500"
-          />
-          <span className="text-sm text-slate-300">Mark as unresolved</span>
-        </label>
+        <UnresolvedCheckbox checked={unresolved} onChange={setUnresolved} />
 
         {onSplit && (cardsOut.length + cardsIn.length >= 2) && (
           <div className="pt-1 border-t border-slate-700/60">

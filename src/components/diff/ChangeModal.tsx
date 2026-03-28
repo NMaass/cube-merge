@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import { useState } from 'react'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
-import { Textarea } from '../ui/Textarea'
-import { SuggestionMenu } from '../ui/SuggestionMenu'
-import { useAutocomplete } from '../../hooks/useAutocomplete'
+import { AutocompleteTextarea } from '../ui/AutocompleteTextarea'
+import { UnresolvedCheckbox } from '../ui/UnresolvedCheckbox'
 import { ReviewerNameBadge } from '../ui/ReviewerNameBadge'
 import { useEditMode } from '../../context/EditModeContext'
-import { getCachedImage } from '../../lib/imageCache'
+import { useCardPreview } from '../../hooks/useCardPreview'
 import { FullscreenCardModal } from '../cards/FullscreenCardModal'
 import { PreviewableCardRow } from '../changes/PreviewableCardRow'
 import { CubeCard } from '../../types/cube'
@@ -35,7 +35,7 @@ export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCar
   const { actionType, clearSelection } = useEditMode()
   const [comment, setComment] = useState('')
   const [unresolved, setUnresolved] = useState(false)
-  const [previewCard, setPreviewCard] = useState<CubeCard | null>(null)
+  const { setPreviewCard, previewModalProps } = useCardPreview()
 
   const type = forceType ?? actionType ?? 'add'
 
@@ -43,14 +43,11 @@ export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCar
     ...selectedLeftCards.map(c => c.name),
     ...selectedRightCards.map(c => c.name),
   ]
-  const { textareaRef, suggestions, anchor, onTextareaChange, applySuggestion, dismiss } =
-    useAutocomplete({ diffCards: diffCardNames, reviewerNames })
 
   // Reset transient state when modal closes
   useEffect(() => {
     if (!open) {
-      setPreviewCard(null)
-      dismiss()
+      previewModalProps.onClose()
     }
   }, [open])
 
@@ -88,34 +85,15 @@ export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCar
             )}
         </div>
 
-        <div className="relative">
-          <Textarea
-            ref={textareaRef}
-            placeholder="Add a note… / for cards, @ for names"
-            value={comment}
-            onChange={e => {
-              setComment(e.target.value)
-              onTextareaChange(e.target.value, e.target.selectionStart ?? e.target.value.length)
-            }}
-            onKeyDown={e => { if (e.key === 'Escape' && suggestions.length > 0) { e.stopPropagation(); dismiss() } }}
-            rows={3}
-          />
-          <SuggestionMenu
-            suggestions={suggestions}
-            anchor={anchor}
-            onSelect={s => applySuggestion(s, comment, setComment)}
-          />
-        </div>
+        <AutocompleteTextarea
+          value={comment}
+          onChange={setComment}
+          diffCards={diffCardNames}
+          reviewerNames={reviewerNames}
+          rows={3}
+        />
 
-        <label className="flex items-center gap-2 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={unresolved}
-            onChange={e => setUnresolved(e.target.checked)}
-            className="w-3.5 h-3.5 rounded accent-yellow-500"
-          />
-          <span className="text-sm text-slate-300">Mark as unresolved</span>
-        </label>
+        <UnresolvedCheckbox checked={unresolved} onChange={setUnresolved} />
 
         <div className="flex items-center justify-between">
           <ReviewerNameBadge />
@@ -126,12 +104,7 @@ export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCar
         </div>
       </div>
 
-      <FullscreenCardModal
-        open={!!previewCard}
-        onClose={() => setPreviewCard(null)}
-        cardName={previewCard?.name ?? ''}
-        imageUrl={previewCard ? getCachedImage(previewCard.name) ?? undefined : undefined}
-      />
+      <FullscreenCardModal {...previewModalProps} />
     </Modal>
   )
 }

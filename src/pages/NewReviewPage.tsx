@@ -80,6 +80,15 @@ export function ReviewWorkspace({
   const sections = useMemo(() => groupBySection(diffData.onlyA, diffData.onlyB), [diffData])
   const { currentIndex, goNext, goPrev, goTo, total } = useSectionNav(sections)
 
+  const allDiffCards = useMemo(() => [
+    ...diffData.onlyA.map(c => c.name),
+    ...diffData.onlyB.map(c => c.name),
+  ], [diffData])
+  const allReviewerNames = useMemo(() =>
+    [...new Set(changes.map(c => c.authorName).filter(Boolean))].filter(name => !/^Reviewer\d*$/.test(name)),
+    [changes]
+  )
+
   useEffect(() => {
     recordCubeCards(cubeAId, diffData.onlyA.map(c => c.name))
     recordCubeCards(cubeBId, diffData.onlyB.map(c => c.name))
@@ -531,11 +540,8 @@ export function ReviewWorkspace({
                 if (!a.unresolved && b.unresolved) return 1
                 return 0
               })
-              const diffCards = [
-                ...diffData.onlyA.map(c => c.name),
-                ...diffData.onlyB.map(c => c.name),
-              ]
-              const reviewerNames = [...new Set(changes.map(c => c.authorName).filter(Boolean))].filter(name => !/^Reviewer\d*$/.test(name))
+              const diffCards = allDiffCards
+              const reviewerNames = allReviewerNames
               return (
                 <>
                   <div className="flex items-center gap-6 px-2 py-3 mb-1 border-b border-slate-700/60">
@@ -613,6 +619,8 @@ export function ReviewWorkspace({
               setSplittingChange(editingChange)
               setEditingChange(null)
             } : undefined}
+            diffCards={allDiffCards}
+            reviewerNames={allReviewerNames}
           />
         )}
 
@@ -622,6 +630,8 @@ export function ReviewWorkspace({
             onClose={() => setSplittingChange(null)}
             change={splittingChange}
             onSplit={(orig, fresh) => handleSplitChange(splittingChange.id, orig, fresh)}
+            diffCards={allDiffCards}
+            reviewerNames={allReviewerNames}
           />
         )}
 

@@ -1,9 +1,7 @@
 import { useState } from 'react'
 import { Comment, CommentResolution } from '../../types/firestore'
 import { useAuth } from '../../context/AuthContext'
-import { useAutocomplete } from '../../hooks/useAutocomplete'
-import { SuggestionMenu } from '../ui/SuggestionMenu'
-import { Textarea } from '../ui/Textarea'
+import { AutocompleteTextarea } from '../ui/AutocompleteTextarea'
 import { RichText } from '../ui/RichText'
 
 interface CommentItemProps {
@@ -18,8 +16,6 @@ export function CommentItem({ comment, onSetResolution, onEdit, diffCards = [], 
   const { identity } = useAuth()
   const [editing, setEditing] = useState(false)
   const [editBody, setEditBody] = useState('')
-  const { textareaRef, suggestions, anchor, onTextareaChange, applySuggestion, dismiss } =
-    useAutocomplete({ diffCards, reviewerNames })
 
   const date = comment.createdAt?.toDate?.()?.toLocaleDateString() || ''
   const isResolved = comment.resolution === 'resolved'
@@ -92,30 +88,18 @@ export function CommentItem({ comment, onSetResolution, onEdit, diffCards = [], 
 
         {editing ? (
           <div className="space-y-2">
-            <div className="relative">
-              <Textarea
-                ref={textareaRef}
-                autoFocus
-                value={editBody}
-                onChange={e => {
-                  setEditBody(e.target.value)
-                  onTextareaChange(e.target.value, e.target.selectionStart ?? e.target.value.length)
-                }}
-                onKeyDown={e => {
-                  if (e.key === 'Escape') {
-                    if (suggestions.length > 0) { dismiss(); return }
-                    cancelEdit()
-                  }
-                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveEdit() }
-                }}
-                rows={3}
-              />
-              <SuggestionMenu
-                suggestions={suggestions}
-                anchor={anchor}
-                onSelect={s => applySuggestion(s, editBody, setEditBody)}
-              />
-            </div>
+            <AutocompleteTextarea
+              value={editBody}
+              onChange={setEditBody}
+              autoFocus
+              diffCards={diffCards}
+              reviewerNames={reviewerNames}
+              rows={3}
+              onKeyDown={e => {
+                if (e.key === 'Escape') cancelEdit()
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveEdit() }
+              }}
+            />
             <div className="flex items-center gap-2">
               <button
                 onClick={saveEdit}

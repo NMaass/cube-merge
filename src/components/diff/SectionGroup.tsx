@@ -1,10 +1,9 @@
 import { CubeCard } from '../../types/cube'
+import { CardState } from '../../types/cardState'
 import { SectionHeader } from './SectionHeader'
 import { ColorCategory } from '../../types/cube'
 import { CardChip } from '../cards/CardChip'
 import { CardBlock } from '../cards/CardBlock'
-
-type CardState = 'normal' | 'selected' | 'accepted' | 'removed'
 
 interface SectionGroupProps {
   colorCategory: ColorCategory

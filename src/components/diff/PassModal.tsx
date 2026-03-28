@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
-import { Textarea } from '../ui/Textarea'
+import { AutocompleteTextarea } from '../ui/AutocompleteTextarea'
+import { UnresolvedCheckbox } from '../ui/UnresolvedCheckbox'
 import { CubeCard } from '../../types/cube'
 
 interface PassModalProps {
@@ -10,9 +11,11 @@ interface PassModalProps {
   leftCards: CubeCard[]
   rightCards: CubeCard[]
   onSave: (comment: string, unresolved: boolean) => void
+  diffCards?: string[]
+  reviewerNames?: string[]
 }
 
-export function PassModal({ open, onClose, leftCards, rightCards, onSave }: PassModalProps) {
+export function PassModal({ open, onClose, leftCards, rightCards, onSave, diffCards = [], reviewerNames = [] }: PassModalProps) {
   const [comment, setComment] = useState('')
   const [unresolved, setUnresolved] = useState(false)
 
@@ -48,22 +51,15 @@ export function PassModal({ open, onClose, leftCards, rightCards, onSave }: Pass
           Left cards will be marked as <span className="text-teal-400">kept</span>; right cards as <span className="text-orange-400">rejected</span>.
         </p>
 
-        <Textarea
-          placeholder="Add a note (optional)..."
+        <AutocompleteTextarea
           value={comment}
-          onChange={e => setComment(e.target.value)}
+          onChange={setComment}
+          diffCards={diffCards}
+          reviewerNames={reviewerNames}
           rows={3}
         />
 
-        <label className="flex items-center gap-2 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={unresolved}
-            onChange={e => setUnresolved(e.target.checked)}
-            className="w-3.5 h-3.5 rounded accent-yellow-500"
-          />
-          <span className="text-sm text-slate-300">Mark as unresolved</span>
-        </label>
+        <UnresolvedCheckbox checked={unresolved} onChange={setUnresolved} />
 
         <div className="flex justify-end gap-2">
           <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>

@@ -7,7 +7,8 @@ import { clearCachedImage, setCachedImages } from '../../lib/imageCache'
 import { fetchSingleCardImage } from '../../lib/scryfall'
 import { useCardHoverPreview } from '../../hooks/useCardHoverPreview'
 
-export type CardState = 'normal' | 'selected' | 'accepted' | 'removed' | 'kept' | 'rejected'
+export type { CardState } from '../../types/cardState'
+import type { CardState } from '../../types/cardState'
 
 interface CardListItemProps {
   card: CubeCard

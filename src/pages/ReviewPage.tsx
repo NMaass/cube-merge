@@ -1211,6 +1211,8 @@ function ReviewWorkspace({
           leftCards={selectedLeftCards}
           rightCards={selectedRightCards}
           onSave={handleSavePass}
+          diffCards={allDiffCards}
+          reviewerNames={reviewerNames}
         />
 
         {splittingChange && (
@@ -1219,6 +1221,8 @@ function ReviewWorkspace({
             onClose={() => setSplittingChange(null)}
             change={splittingChange}
             onSplit={(orig, fresh) => handleSplitChange(splittingChange.id, orig, fresh)}
+            diffCards={allDiffCards}
+            reviewerNames={reviewerNames}
           />
         )}
 

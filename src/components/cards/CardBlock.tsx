@@ -1,9 +1,8 @@
 import { memo, useState } from 'react'
 import { CubeCard } from '../../types/cube'
+import { CardState } from '../../types/cardState'
 import { ManaCostPips } from './ManaCostPips'
 import { FullscreenCardModal } from './FullscreenCardModal'
-
-type CardState = 'normal' | 'selected' | 'accepted' | 'removed'
 
 interface CardBlockProps {
   card: CubeCard
@@ -14,13 +13,15 @@ interface CardBlockProps {
 
 export const CardBlock = memo(function CardBlock({ card, state, imageUrl, onToggle }: CardBlockProps) {
   const [previewOpen, setPreviewOpen] = useState(false)
-  const isLocked = state === 'accepted' || state === 'removed'
+  const isLocked = state === 'accepted' || state === 'removed' || state === 'kept' || state === 'rejected'
 
   const stateClasses: Record<CardState, string> = {
     normal: 'border-slate-600 text-slate-300',
     selected: 'border-amber-500 bg-amber-900/20 text-amber-200',
     accepted: 'border-green-600 text-green-300',
     removed: 'border-red-600 text-red-300',
+    kept: 'border-teal-600 text-teal-300',
+    rejected: 'border-orange-600 text-orange-300',
   }
 
   return (

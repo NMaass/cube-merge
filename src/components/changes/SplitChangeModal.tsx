@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
-import { Textarea } from '../ui/Textarea'
+import { AutocompleteTextarea } from '../ui/AutocompleteTextarea'
 import { Change, Comment, ChangeType } from '../../types/firestore'
 import { CubeCard } from '../../types/cube'
 import { computeChangeType } from '../../lib/changes'
@@ -13,9 +13,11 @@ interface SplitChangeModalProps {
   onClose: () => void
   change: WorkingChange
   onSplit: (originalUpdates: { cardsOut: CubeCard[]; cardsIn: CubeCard[]; type: ChangeType }, newChange: { cardsOut: CubeCard[]; cardsIn: CubeCard[]; type: ChangeType; comment: string }) => void
+  diffCards?: string[]
+  reviewerNames?: string[]
 }
 
-export function SplitChangeModal({ open, onClose, change, onSplit }: SplitChangeModalProps) {
+export function SplitChangeModal({ open, onClose, change, onSplit, diffCards = [], reviewerNames = [] }: SplitChangeModalProps) {
   const [splitOut, setSplitOut] = useState<Set<string>>(new Set())
   const [splitIn, setSplitIn] = useState<Set<string>>(new Set())
   const [comment, setComment] = useState('')
@@ -86,10 +88,12 @@ export function SplitChangeModal({ open, onClose, change, onSplit }: SplitChange
           </div>
         )}
 
-        <Textarea
-          placeholder="Note for the new change (optional)…"
+        <AutocompleteTextarea
           value={comment}
-          onChange={e => setComment(e.target.value)}
+          onChange={setComment}
+          placeholder="Note for the new change (optional)… / for cards, @ for names"
+          diffCards={diffCards}
+          reviewerNames={reviewerNames}
           rows={2}
         />
 
