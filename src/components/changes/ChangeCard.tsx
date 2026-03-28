@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import { Change, Comment, CommentResolution } from '../../types/firestore'
 import { computeChangeType } from '../../lib/changes'
-import { Badge } from '../ui/Badge'
-import { ChangeTypeBadge } from './ChangeTypeBadge'
 import { CardInOutDisplay } from './CardInOutDisplay'
 import { CommentThread } from './CommentThread'
 import { RichText } from '../ui/RichText'
@@ -34,12 +32,15 @@ export function ChangeCard({ change, onAddComment, onSetCommentResolution, onEdi
   for (const c of change.cardsOut) cardColors[c.name] = outColor
   for (const c of change.cardsIn) cardColors[c.name] = inColor
 
-  // Colored left border for keep/reject
-  const borderAccent = displayType === 'keep'
-    ? 'border-l-2 border-l-teal-500'
-    : displayType === 'reject'
-    ? 'border-l-2 border-l-orange-500'
-    : ''
+  // Colored left border by change type
+  const borderColors: Record<string, string> = {
+    swap: 'border-l-amber-500',
+    add: 'border-l-green-500',
+    remove: 'border-l-red-500',
+    keep: 'border-l-teal-500',
+    reject: 'border-l-orange-500',
+  }
+  const borderAccent = `border-l-2 ${borderColors[displayType] ?? ''}`
 
   return (
     <div
@@ -53,11 +54,8 @@ export function ChangeCard({ change, onAddComment, onSetCommentResolution, onEdi
             {change.authorName?.[0] || '?'}
           </div>
           <span className="text-sm font-medium text-slate-300 truncate">{change.authorName}</span>
-          <ChangeTypeBadge type={displayType} />
           {change.unresolved && (
-            <Badge variant="yellow" className="gap-1 whitespace-nowrap shrink-0">
-              <span aria-hidden="true">⚠</span> Unresolved
-            </Badge>
+            <span className="w-2 h-2 rounded-full bg-yellow-500 shrink-0" title="Unresolved" />
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
