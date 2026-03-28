@@ -479,7 +479,7 @@ export function ReviewWorkspace({
 
         {/* Content */}
         {mode === 'edit' ? (
-          <div id="main-content" className="flex flex-col flex-1 min-h-0">
+          <div className="flex flex-col flex-1 min-h-0">
             <DiffList sections={sections} imageMap={imageMap} loadingSet={loadingSet} changes={changes} />
             {/* Mobile-only sticky action bar */}
             {hasSelection && (
@@ -650,6 +650,7 @@ export function ReviewWorkspace({
             </div>
             <textarea
               readOnly
+              aria-label={`${copyTab === 'summary' ? 'Summary' : 'CubeCobra'} export text`}
               value={copyTab === 'summary' ? buildSummaryText() : buildCubeCobraText()}
               className="w-full h-64 bg-slate-900 text-slate-200 text-xs font-mono rounded-lg p-3 resize-none border border-slate-700 focus:outline-none"
             />

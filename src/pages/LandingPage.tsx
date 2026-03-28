@@ -340,7 +340,7 @@ export default function LandingPage() {
         </nav>
 
         {/* Hero */}
-        <main id="main-content" className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+        <main className="flex-1 flex flex-col items-center justify-center px-4 py-12">
           <div className="max-w-lg w-full space-y-8">
 
             <div className="text-center space-y-3">

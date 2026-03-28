@@ -77,16 +77,16 @@ export function SectionNav({
 
   const isSearching = editing && onCardSearch && findSection(value) < 0 && value.trim().length > 0
 
-  const btnClass = `touch-target flex items-center justify-center h-8 w-8 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40
-    disabled:cursor-not-allowed text-slate-200 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500`
+  const btnClass = `touch-target flex items-center justify-center h-8 w-8 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-50
+    disabled:cursor-not-allowed text-slate-200 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500`
 
   return (
     <div className={`flex items-center justify-center gap-1 min-w-0 ${disabled ? 'opacity-30 pointer-events-none' : ''}`}>
       <button
         onClick={onPrev}
         disabled={disabled || currentIndex === 0}
-        title="Previous section (P)"
-        aria-label="Previous section"
+        title={isSearching ? 'Previous match' : 'Previous section (P)'}
+        aria-label={isSearching ? 'Previous match' : 'Previous section'}
         className={btnClass}
       >
         <span aria-hidden="true">←</span>
@@ -95,6 +95,7 @@ export function SectionNav({
 
       <input
         type="text"
+        role={isSearching ? 'searchbox' : undefined}
         value={value}
         onFocus={() => setEditing(true)}
         onBlur={handleBlur}
@@ -102,10 +103,10 @@ export function SectionNav({
         onKeyDown={handleKeyDown}
         onDoubleClick={e => (e.currentTarget as HTMLInputElement).select()}
         title={placeholder ?? "Type a section (e.g. 3G, C4, Land, 6+W)"}
-        aria-label="Navigate to section"
+        aria-label={isSearching ? 'Search cards' : 'Navigate to section'}
         aria-describedby="section-nav-instructions"
         placeholder={editing ? (placeholder ?? '') : undefined}
-        className={`h-8 ${isSearching ? 'w-32 sm:w-44' : 'w-16 sm:w-20'} bg-slate-700 border rounded px-1.5 text-sm font-mono text-slate-200 text-center transition-all focus:outline-none focus:ring-1 focus:border-transparent ${sectionComplete ? 'border-green-500 ring-1 ring-green-500 text-green-300' : 'border-slate-600 focus:ring-amber-500 focus:border-amber-500'}`}
+        className={`h-8 ${isSearching ? 'flex-1 min-w-0' : 'w-16 sm:w-20'} bg-slate-700 border rounded px-1.5 text-sm font-mono text-slate-200 text-center transition-all focus:outline-none focus:ring-1 focus:border-transparent ${sectionComplete ? 'border-green-500 ring-1 ring-green-500 text-green-300' : 'border-slate-600 focus:ring-amber-500 focus:border-amber-500'}`}
         spellCheck={false}
       />
       <div id="section-nav-instructions" className="sr-only">
@@ -121,8 +122,8 @@ export function SectionNav({
       <button
         onClick={onNext}
         disabled={disabled || currentIndex === total - 1}
-        title="Next section (N)"
-        aria-label="Next section"
+        title={isSearching ? 'Next match' : 'Next section (N)'}
+        aria-label={isSearching ? 'Next match' : 'Next section'}
         className={btnClass}
       >
         <span aria-hidden="true">→</span>

@@ -13,6 +13,8 @@ export const COLOR_NAMES: Record<ColorCategory, string> = {
   L: 'Land',
 }
 
+/** MTG color backgrounds — used in inline styles for section headers.
+ *  These are MTG-standard identity colors, not theme tokens. */
 export const COLOR_BG: Record<ColorCategory, string> = {
   W: '#f9f6ee',
   U: '#c1d7e9',

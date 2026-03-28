@@ -44,6 +44,9 @@ const TYPE_HEADER_COLORS: Record<ChangeType, string> = {
   swap: 'text-amber-400', add: 'text-green-400', remove: 'text-red-400',
   keep: 'text-teal-400', reject: 'text-orange-400',
 }
+const TYPE_SYMBOLS: Record<ChangeType, string> = {
+  swap: '⇄', add: '+', remove: '−', keep: '↺', reject: '×',
+}
 
 // ── View mode panel ──────────────────────────────────────────────────────────
 
@@ -199,7 +202,7 @@ function ViewModePanel({
               className="flex items-center gap-2 pt-2 pb-1.5"
             >
               <span className={`text-xs font-semibold uppercase tracking-wider ${TYPE_HEADER_COLORS[g.type]}`}>
-                {g.label}
+                <span aria-hidden="true">{TYPE_SYMBOLS[g.type]} </span>{g.label}
               </span>
               <span className="text-xs text-slate-600">{g.changes.length}</span>
               {groupUnresolved > 0 && (
@@ -1173,7 +1176,7 @@ function ReviewWorkspace({
             <Spinner />
           </div>
         ) : mode === 'edit' ? (
-          <div id="main-content" className="flex flex-col flex-1 min-h-0">
+          <div className="flex flex-col flex-1 min-h-0">
             <DiffList sections={sections} imageMap={imageMap} loadingSet={loadingSet} changes={changes} selectable={mode === 'edit'} onCardInChangeClick={(ch) => setEditingChange(ch)} />
             {hasSelection && (
               <div className="lg:hidden sticky bottom-0 z-10 shrink-0 bg-slate-800 border-t border-slate-700 px-3 py-2 pb-safe flex items-center gap-2">
@@ -1312,6 +1315,7 @@ function ReviewWorkspace({
             </div>
             <textarea
               readOnly
+              aria-label={`${copyTab === 'summary' ? 'Summary' : 'CubeCobra'} export text`}
               value={copyTab === 'summary' ? buildSummaryText() : buildCubeCobraText()}
               className="w-full h-64 bg-slate-900 text-slate-200 text-xs font-mono rounded-lg p-3 resize-none border border-slate-700 focus:outline-none"
             />

@@ -70,6 +70,7 @@ function getCaretCoords(el: HTMLTextAreaElement, pos: number): CaretAnchor {
 
 export function useAutocomplete({ diffCards = [], reviewerNames = [] }: UseAutocompleteOptions) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
+  const [activeIndex, setActiveIndex] = useState(-1)
   const [triggerStart, setTriggerStart] = useState(-1)
   const [anchor, setAnchor] = useState<CaretAnchor | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -113,6 +114,7 @@ export function useAutocomplete({ diffCards = [], reviewerNames = [] }: UseAutoc
           .slice(0, 6)
           .map(n => ({ kind: 'reviewer' as const, value: n }))
         setSuggestions(items)
+        setActiveIndex(-1)
         return
       }
 
@@ -122,6 +124,7 @@ export function useAutocomplete({ diffCards = [], reviewerNames = [] }: UseAutoc
         .slice(0, 8)
         .map(c => ({ kind: 'card' as const, value: c }))
       setSuggestions(localMatches)
+      setActiveIndex(-1)
 
       // Scryfall for queries >= 2 chars
       if (scryfallTimer.current !== null) clearTimeout(scryfallTimer.current)
@@ -186,9 +189,24 @@ export function useAutocomplete({ diffCards = [], reviewerNames = [] }: UseAutoc
     if (scryfallTimer.current !== null) clearTimeout(scryfallTimer.current)
     scryfallAbort.current?.abort()
     setSuggestions([])
+    setActiveIndex(-1)
     setTriggerStart(-1)
     setAnchor(null)
   }
 
-  return { textareaRef, suggestions, anchor, onTextareaChange, applySuggestion, dismiss }
+  function moveActive(delta: number) {
+    if (suggestions.length === 0) return
+    setActiveIndex(prev => {
+      const next = prev + delta
+      if (next < 0) return suggestions.length - 1
+      if (next >= suggestions.length) return 0
+      return next
+    })
+  }
+
+  function getActive(): Suggestion | null {
+    return activeIndex >= 0 && activeIndex < suggestions.length ? suggestions[activeIndex] : null
+  }
+
+  return { textareaRef, suggestions, activeIndex, anchor, onTextareaChange, applySuggestion, dismiss, moveActive, getActive }
 }

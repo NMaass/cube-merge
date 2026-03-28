@@ -18,7 +18,7 @@ export function DynamicSEO({
   structuredData
 }: DynamicSEOProps) {
   const fullTitle = title.includes('Cube Merge') ? title : `${title} | Cube Merge`
-  const currentUrl = canonical || (typeof window !== 'undefined' ? window.location.href : 'https://cubediff.app/')
+  const currentUrl = canonical || (typeof window !== 'undefined' ? window.location.href : 'https://cube-merge.pages.dev/')
 
   return (
     <Helmet>

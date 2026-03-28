@@ -41,7 +41,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </p>
             {import.meta.env.DEV ? (
               <details className="text-left">
-                <summary className="cursor-pointer text-blue-400 hover:text-blue-300 text-sm">
+                <summary className="cursor-pointer text-blue-400 hover:text-blue-300 transition-colors text-sm">
                   Error details
                 </summary>
                 <pre className="text-xs text-slate-500 mt-2 p-3 bg-slate-800 rounded overflow-auto max-h-32 text-left">

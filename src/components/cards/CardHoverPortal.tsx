@@ -14,7 +14,7 @@ export function CardHoverPortal({ hoverPos, imageUrl, backImageUrl, cardName, on
   return createPortal(
     <div
       className="hidden md:flex gap-2 pointer-events-none"
-      style={{ position: 'fixed', top: hoverPos.top, left: hoverPos.left, zIndex: 9999 }}
+      style={{ position: 'fixed', top: hoverPos.top, left: hoverPos.left, zIndex: 100 }}
     >
       <img
         src={imageUrl}

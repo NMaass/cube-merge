@@ -24,7 +24,7 @@ export function WebApplicationStructuredData() {
     '@type': 'WebApplication',
     name: 'Cube Merge',
     description: 'Compare two MTG cube lists side by side, annotate card changes, and collaborate in real time with your playgroup.',
-    url: 'https://cubediff.app/',
+    url: 'https://cube-merge.pages.dev/',
     applicationCategory: 'GameApplication',
     operatingSystem: 'Web Browser',
     browserRequirements: 'Requires JavaScript. Supports Chrome, Firefox, Safari, Edge.',
@@ -44,7 +44,7 @@ export function WebApplicationStructuredData() {
       'Visual diff highlighting',
       'Export comparison reports'
     ],
-    screenshot: 'https://cubediff.app/favicon.svg'
+    screenshot: 'https://cube-merge.pages.dev/favicon.svg'
   }
 
   return <StructuredData data={data} />

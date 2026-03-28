@@ -19,8 +19,10 @@ export function AutocompleteTextarea({
   rows = 3, autoFocus, diffCards = [], reviewerNames = [],
   onKeyDown,
 }: AutocompleteTextareaProps) {
-  const { textareaRef, suggestions, anchor, onTextareaChange, applySuggestion, dismiss } =
+  const { textareaRef, suggestions, activeIndex, anchor, onTextareaChange, applySuggestion, dismiss, moveActive, getActive } =
     useAutocomplete({ diffCards, reviewerNames })
+
+  const menuId = 'autocomplete-suggestions'
 
   return (
     <div className="relative">
@@ -29,15 +31,23 @@ export function AutocompleteTextarea({
         autoFocus={autoFocus}
         placeholder={placeholder}
         value={value}
+        aria-expanded={suggestions.length > 0}
+        aria-controls={suggestions.length > 0 ? menuId : undefined}
+        aria-activedescendant={activeIndex >= 0 ? `${menuId}-${activeIndex}` : undefined}
+        aria-autocomplete="list"
         onChange={e => {
           onChange(e.target.value)
           onTextareaChange(e.target.value, e.target.selectionStart ?? e.target.value.length)
         }}
         onKeyDown={e => {
-          if (e.key === 'Escape' && suggestions.length > 0) {
-            e.stopPropagation()
-            dismiss()
-            return
+          if (suggestions.length > 0) {
+            if (e.key === 'Escape') { e.stopPropagation(); dismiss(); return }
+            if (e.key === 'ArrowDown') { e.preventDefault(); moveActive(1); return }
+            if (e.key === 'ArrowUp') { e.preventDefault(); moveActive(-1); return }
+            if (e.key === 'Enter') {
+              const active = getActive()
+              if (active) { e.preventDefault(); applySuggestion(active, value, onChange); return }
+            }
           }
           onKeyDown?.(e)
         }}
@@ -45,6 +55,8 @@ export function AutocompleteTextarea({
       />
       <SuggestionMenu
         suggestions={suggestions}
+        activeIndex={activeIndex}
+        menuId={menuId}
         anchor={anchor}
         onSelect={s => applySuggestion(s, value, onChange)}
       />

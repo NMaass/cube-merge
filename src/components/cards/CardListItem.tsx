@@ -20,7 +20,7 @@ interface CardListItemProps {
 }
 
 const ROW_CLASS: Record<CardState, string> = {
-  normal: 'hover:bg-slate-700/30 cursor-pointer',
+  normal: 'hover:bg-slate-700/30 cursor-pointer transition-colors',
   selected: 'bg-amber-900/20 cursor-pointer',
   accepted: 'bg-green-900/10 cursor-pointer opacity-80',
   removed: 'bg-red-900/10 cursor-pointer opacity-80',
@@ -142,7 +142,7 @@ export const CardListItem = memo(function CardListItem({ card, state, imageUrl, 
         <ManaCostPips manaCost={card.manaCost} />
         {/* Mobile preview button — pulsing indicator when loading */}
         <button
-          className="md:hidden ml-1 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-500 hover:text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded relative"
+          className="md:hidden ml-1 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-500 hover:text-slate-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded relative"
           onClick={e => {
             e.stopPropagation()
             setPreviewOpen(true)

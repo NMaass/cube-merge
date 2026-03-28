@@ -63,7 +63,7 @@ export function CommentItem({ comment, onSetResolution, onEdit, diffCards = [], 
             {canEdit && !editing && (
               <button
                 onClick={startEdit}
-                className="p-1.5 text-slate-600 hover:text-slate-400 transition-colors rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
+                className="touch-target p-2 -m-0.5 text-slate-600 hover:text-slate-400 transition-colors rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
                 aria-label="Edit comment"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -74,7 +74,7 @@ export function CommentItem({ comment, onSetResolution, onEdit, diffCards = [], 
             {onSetResolution && !editing && (
               <button
                 onClick={() => onSetResolution(isResolved ? 'none' : 'resolved')}
-                className="p-2 -m-1 text-xs text-slate-500 hover:text-slate-300 transition-colors shrink-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500 rounded touch-target"
+                className="touch-target p-2 -m-0.5 text-xs text-slate-500 hover:text-slate-300 transition-colors shrink-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500 rounded"
                 aria-label={isResolved ? 'Unresolve comment' : 'Mark comment as resolved'}
               >
                 {isResolved ? (
@@ -105,7 +105,7 @@ export function CommentItem({ comment, onSetResolution, onEdit, diffCards = [], 
               <button
                 onClick={saveEdit}
                 disabled={!editBody.trim() || editBody.trim() === comment.body}
-                className="px-3 py-1 text-xs bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-900 rounded-lg transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-400"
+                className="px-3 py-1 text-xs bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 rounded-lg transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-400"
               >
                 Save
               </button>

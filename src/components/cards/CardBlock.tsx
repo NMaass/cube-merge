@@ -36,7 +36,7 @@ export const CardBlock = memo(function CardBlock({ card, state, imageUrl, onTogg
         </button>
         <button
           onClick={() => setPreviewOpen(true)}
-          className="text-slate-400 hover:text-white p-1"
+          className="text-slate-400 hover:text-white p-1 transition-colors"
           aria-label="Preview card"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

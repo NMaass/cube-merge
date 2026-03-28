@@ -58,7 +58,7 @@ export function SplitChangeModal({ open, onClose, change, onSplit, diffCards = [
               {change.type === 'keep' ? 'Keeping' : 'Removing'}
             </div>
             {change.cardsOut.map(c => (
-              <label key={c.name} className="flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-slate-700/40 cursor-pointer">
+              <label key={c.name} className="flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-slate-700/40 cursor-pointer transition-colors">
                 <input
                   type="checkbox"
                   checked={splitOut.has(c.name)}
@@ -75,7 +75,7 @@ export function SplitChangeModal({ open, onClose, change, onSplit, diffCards = [
           <div className="space-y-1.5">
             <div className="text-xs font-medium text-slate-400 uppercase tracking-wide">Adding</div>
             {change.cardsIn.map(c => (
-              <label key={c.name} className="flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-slate-700/40 cursor-pointer">
+              <label key={c.name} className="flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-slate-700/40 cursor-pointer transition-colors">
                 <input
                   type="checkbox"
                   checked={splitIn.has(c.name)}

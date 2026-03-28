@@ -5,6 +5,8 @@ import { Suggestion, CaretAnchor } from '../../hooks/useAutocomplete'
 
 interface SuggestionMenuProps {
   suggestions: Suggestion[]
+  activeIndex?: number
+  menuId?: string
   anchor: CaretAnchor | null
   onSelect: (s: Suggestion) => void
 }
@@ -16,7 +18,7 @@ function useIsMobile() {
   return typeof window !== 'undefined' && window.innerWidth < 768
 }
 
-export function SuggestionMenu({ suggestions, anchor, onSelect }: SuggestionMenuProps) {
+export function SuggestionMenu({ suggestions, activeIndex = -1, menuId, anchor, onSelect }: SuggestionMenuProps) {
   const isOpen = !!anchor && suggestions.length > 0
   const isMobile = useIsMobile()
 
@@ -57,26 +59,35 @@ export function SuggestionMenu({ suggestions, anchor, onSelect }: SuggestionMenu
     refs.setReference(virtualRef.current as unknown as HTMLElement)
   }, [refs, anchor])
 
+  // Scroll active item into view when navigating with keyboard
+  useEffect(() => {
+    if (activeIndex >= 0 && menuId) {
+      document.getElementById(`${menuId}-${activeIndex}`)?.scrollIntoView({ block: 'nearest' })
+    }
+  }, [activeIndex, menuId])
+
   if (!isOpen) return null
 
   return createPortal(
     <div
       ref={refs.setFloating}
+      id={menuId}
       role="listbox"
       aria-label="Suggestions"
       style={{
         ...floatingStyles,
         width: MENU_WIDTH,
-        zIndex: 9999,
+        zIndex: 95,
       }}
       className="bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-y-auto"
     >
       {suggestions.map((s, i) => (
         <button
           key={i}
+          id={menuId ? `${menuId}-${i}` : undefined}
           role="option"
-          aria-selected={false}
-          className="w-full text-left px-3 py-2.5 sm:py-1.5 text-xs text-slate-200 hover:bg-slate-700 flex items-center gap-2 transition-colors"
+          aria-selected={i === activeIndex}
+          className={`w-full text-left px-3 py-2.5 sm:py-1.5 text-xs text-slate-200 hover:bg-slate-700/70 flex items-center gap-2 transition-colors ${i === activeIndex ? 'bg-amber-500/15 text-amber-200' : ''}`}
           onMouseDown={e => { e.preventDefault(); onSelect(s) }}
         >
           {s.kind === 'reviewer' && (

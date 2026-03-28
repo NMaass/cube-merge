@@ -37,11 +37,12 @@ function CardMention({ name, colorClass }: { name: string; colorClass: string })
     <>
       <button
         type="button"
-        className={`underline decoration-1 underline-offset-2 ${colorClass} hover:brightness-125 transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500 focus-visible:rounded-sm`}
+        className={`underline decoration-1 underline-offset-2 ${colorClass} hover:text-slate-100 transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500 focus-visible:rounded-sm`}
         onClick={() => setPreviewOpen(true)}
         onMouseMove={e => imageUrl && setPosition(e.clientX, e.clientY, false)}
         onMouseLeave={close}
         aria-label={`Preview ${name}`}
+        title={name}
       >
         {name}
       </button>

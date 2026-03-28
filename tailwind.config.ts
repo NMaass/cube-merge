@@ -21,7 +21,9 @@ export default {
         'sticky': '20',
         'dropdown': '50',
         'preview': '90',
+        'suggestion': '95',
         'modal': '100',
+        'modal-overlay': '110',
         'skip': '200',
       },
       fontFamily: {

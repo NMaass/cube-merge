@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 interface FullscreenCardModalProps {
@@ -13,16 +13,42 @@ interface FullscreenCardModalProps {
 export function FullscreenCardModal({ open, onClose, cardName, imageUrl, backImageUrl, loading }: FullscreenCardModalProps) {
   const [showBack, setShowBack] = useState(false)
   const titleId = useId()
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const previousFocus = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     if (open) setShowBack(false)
   }, [open])
 
+  // Focus trap + Escape + restore focus on close
   useEffect(() => {
     if (!open) return
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    previousFocus.current = document.activeElement as HTMLElement | null
+    // Focus first focusable element in dialog
+    requestAnimationFrame(() => {
+      const el = dialogRef.current
+      if (!el) return
+      const focusable = el.querySelector<HTMLElement>('button, [href], input, [tabindex]:not([tabindex="-1"])')
+      focusable?.focus()
+    })
+
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onClose(); return }
+      if (e.key !== 'Tab') return
+      const el = dialogRef.current
+      if (!el) return
+      const focusables = el.querySelectorAll<HTMLElement>('button, [href], input, [tabindex]:not([tabindex="-1"])')
+      if (focusables.length === 0) return
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+    }
     window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
+    return () => {
+      window.removeEventListener('keydown', handler)
+      previousFocus.current?.focus()
+    }
   }, [open, onClose])
 
   if (!open) return null
@@ -33,6 +59,7 @@ export function FullscreenCardModal({ open, onClose, cardName, imageUrl, backIma
     <>
       <div className="fixed inset-0 z-[110] bg-black/85 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -41,7 +68,7 @@ export function FullscreenCardModal({ open, onClose, cardName, imageUrl, backIma
         <h2 id={titleId} className="sr-only">{cardName}</h2>
 
         <button
-          className="pointer-events-auto absolute top-4 right-4 w-11 h-11 flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors focus:outline-none focus:ring-2 focus:ring-white"
+          className="pointer-events-auto absolute top-4 right-4 w-11 h-11 flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
           onClick={onClose}
           aria-label="Close card preview"
         >

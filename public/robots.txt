@@ -2,7 +2,7 @@ User-agent: *
 Allow: /
 
 # Sitemap
-Sitemap: https://cubediff.app/sitemap.xml
+Sitemap: https://cube-merge.pages.dev/sitemap.xml
 
 # Block crawling of specific dynamic routes that may not be useful for SEO
 Disallow: /new

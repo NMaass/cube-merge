@@ -221,13 +221,13 @@ export default function ChangelogPage() {
             </svg>
           </Link>
           <div className="flex-1 min-w-0">
-            <h1 className="text-sm font-semibold text-white">Changelog</h1>
+            <h2 className="text-sm font-semibold text-white">Changelog</h2>
             <p className="text-xs text-slate-500 truncate">{review.cubeAId} vs {review.cubeBId}</p>
           </div>
         </header>
 
         {/* Content */}
-        <main id="main-content" className="flex-1 max-w-2xl w-full mx-auto px-4 py-6 space-y-4">
+        <main className="flex-1 max-w-2xl w-full mx-auto px-4 py-6 space-y-4">
           {branchError ? (
             <Notice
               tone="error"
@@ -259,14 +259,14 @@ export default function ChangelogPage() {
                   <button
                     onClick={() => setSelectedSessions(new Set(sessions.map(s => s.key)))}
                     disabled={allSelected}
-                    className="text-xs text-amber-400 hover:text-amber-300 disabled:opacity-40 disabled:cursor-default transition-colors"
+                    className="text-xs text-amber-400 hover:text-amber-300 disabled:opacity-50 disabled:cursor-default transition-colors"
                   >
                     Select all
                   </button>
                   <button
                     onClick={() => setSelectedSessions(new Set())}
                     disabled={noneSelected}
-                    className="text-xs text-slate-500 hover:text-slate-300 disabled:opacity-40 disabled:cursor-default transition-colors"
+                    className="text-xs text-slate-500 hover:text-slate-300 disabled:opacity-50 disabled:cursor-default transition-colors"
                   >
                     Deselect all
                   </button>

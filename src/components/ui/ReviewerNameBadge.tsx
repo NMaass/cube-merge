@@ -38,7 +38,7 @@ export const ReviewerNameBadge = memo(function ReviewerNameBadge({ className = '
         <button
           type="submit"
           disabled={!input.trim()}
-          className="px-2 py-1 text-xs text-amber-400 hover:text-amber-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
+          className="px-2 py-1 text-xs text-amber-400 hover:text-amber-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
         >
           Save
         </button>
