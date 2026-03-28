@@ -36,7 +36,7 @@ const COPY_FEEDBACK_DURATION_MS = 2000
 
 // ── Type filter tabs for view mode ───────────────────────────────────────────
 
-const TYPE_FILTERS: { value: ChangeType | 'all'; label: string }[] = [
+const VIEW_SECTIONS: { value: ChangeType | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'swap', label: 'Swaps' },
   { value: 'add', label: 'Adds' },
@@ -49,9 +49,8 @@ const TYPE_FILTERS: { value: ChangeType | 'all'; label: string }[] = [
 
 function ViewModePanel({
   changes, identity, reviewId,
-  viewTypeFilter, setViewTypeFilter,
-  viewCardSearch, setViewCardSearch,
-  highlightedChangeId, setHighlightedChangeId,
+  viewTypeFilter,
+  highlightedChangeId,
   approvedSectionOpen, setApprovedSectionOpen,
   isApproved, isStale,
   onApprove, onUnapprove,
@@ -62,11 +61,7 @@ function ViewModePanel({
   identity: { id: string; displayName: string }
   reviewId: string
   viewTypeFilter: ChangeType | 'all'
-  setViewTypeFilter: (f: ChangeType | 'all') => void
-  viewCardSearch: string
-  setViewCardSearch: (s: string) => void
   highlightedChangeId: string | null
-  setHighlightedChangeId: (id: string | null) => void
   approvedSectionOpen: boolean
   setApprovedSectionOpen: (open: boolean) => void
   isApproved: (id: string) => boolean
@@ -104,13 +99,6 @@ function ViewModePanel({
   const totalOut = removedNames.size
   const net = totalIn - totalOut
 
-  // Type counts for filter badges
-  const typeCounts: Record<string, number> = { all: changes.length }
-  for (const ch of changes) {
-    const dt = computeChangeType(ch.cardsOut, ch.cardsIn, ch.type)
-    typeCounts[dt] = (typeCounts[dt] ?? 0) + 1
-  }
-
   // Sort
   const myMention = `@${identity.displayName}`
   const hasMention = (c: LiveChange) =>
@@ -136,54 +124,6 @@ function ViewModePanel({
   const activeChanges = typeFiltered.filter(ch => !effectivelyApproved(ch))
   const approvedChanges = typeFiltered.filter(ch => effectivelyApproved(ch))
 
-  // Card search: find all matching changes and cycle through them
-  const [searchMatches, setSearchMatches] = useState<string[]>([])
-  const [searchMatchIndex, setSearchMatchIndex] = useState(0)
-
-  function scrollToChange(id: string) {
-    setHighlightedChangeId(id)
-    const el = document.querySelector(`[data-change-id="${id}"]`)
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }
-
-  function handleCardSearch(query: string) {
-    setViewCardSearch(query)
-    if (!query.trim()) {
-      setSearchMatches([])
-      setSearchMatchIndex(0)
-      setHighlightedChangeId(null)
-      return
-    }
-    const q = query.toLowerCase()
-    const matches = changes
-      .filter(ch =>
-        ch.cardsIn.some(c => c.name.toLowerCase().includes(q)) ||
-        ch.cardsOut.some(c => c.name.toLowerCase().includes(q))
-      )
-      .map(ch => ch.id)
-    setSearchMatches(matches)
-    if (matches.length > 0) {
-      setSearchMatchIndex(0)
-      scrollToChange(matches[0])
-    } else {
-      setHighlightedChangeId(null)
-    }
-  }
-
-  function searchPrev() {
-    if (searchMatches.length === 0) return
-    const idx = (searchMatchIndex - 1 + searchMatches.length) % searchMatches.length
-    setSearchMatchIndex(idx)
-    scrollToChange(searchMatches[idx])
-  }
-
-  function searchNext() {
-    if (searchMatches.length === 0) return
-    const idx = (searchMatchIndex + 1) % searchMatches.length
-    setSearchMatchIndex(idx)
-    scrollToChange(searchMatches[idx])
-  }
-
   function renderChangeCard(change: LiveChange, approved: boolean) {
     return (
       <ChangeCard
@@ -204,65 +144,6 @@ function ViewModePanel({
 
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-3">
-      {/* Type filter tabs */}
-      <div className="flex gap-1 flex-wrap">
-        {TYPE_FILTERS.map(f => {
-          const count = typeCounts[f.value] ?? 0
-          if (f.value !== 'all' && count === 0) return null
-          return (
-            <button
-              key={f.value}
-              onClick={() => setViewTypeFilter(f.value)}
-              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                viewTypeFilter === f.value
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                  : 'bg-slate-700/60 text-slate-400 border border-slate-600/60 hover:text-slate-200 hover:border-slate-500'
-              }`}
-            >
-              {f.label}
-              <span className="ml-1 opacity-60">({count})</span>
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Card search with prev/next cycling */}
-      <div className="flex items-center gap-1">
-        <button
-          onClick={searchPrev}
-          disabled={searchMatches.length === 0}
-          className="flex items-center justify-center h-8 w-8 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-200 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 shrink-0"
-          aria-label="Previous match"
-          title="Previous match"
-        >
-          <span aria-hidden="true">←</span>
-        </button>
-        <input
-          type="text"
-          value={viewCardSearch}
-          onChange={e => handleCardSearch(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); searchNext() } }}
-          placeholder="Search by card name…"
-          className="flex-1 min-w-0 bg-slate-700/60 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
-        />
-        {viewCardSearch.trim() && (
-          <span className="text-xs text-slate-400 tabular-nums whitespace-nowrap shrink-0 w-10 text-center">
-            {searchMatches.length > 0
-              ? `${searchMatchIndex + 1}/${searchMatches.length}`
-              : '0/0'}
-          </span>
-        )}
-        <button
-          onClick={searchNext}
-          disabled={searchMatches.length === 0}
-          className="flex items-center justify-center h-8 w-8 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-200 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 shrink-0"
-          aria-label="Next match"
-          title="Next match"
-        >
-          <span aria-hidden="true">→</span>
-        </button>
-      </div>
-
       {/* Stats bar */}
       <div className="flex items-center gap-6 px-2 py-3 mb-1 border-b border-slate-700/60">
         <div className="text-center">
@@ -414,6 +295,108 @@ function ReviewWorkspace({
     ? sectionLabel(sections[currentIndex].colorCategory, sections[currentIndex].cmc)
     : ''
   const findSection = (input: string) => parseSectionNotation(input, sections)
+
+  // ── View-mode section nav ─────────────────────────────────────────────────
+  // Build sections from change types that have at least one change
+  const viewSections = useMemo(() => {
+    const typeCounts: Record<string, number> = { all: changes.length }
+    for (const ch of changes) {
+      const dt = computeChangeType(ch.cardsOut, ch.cardsIn, ch.type)
+      typeCounts[dt] = (typeCounts[dt] ?? 0) + 1
+    }
+    return VIEW_SECTIONS.filter(s => (typeCounts[s.value] ?? 0) > 0 || s.value === 'all')
+      .map(s => ({ ...s, count: typeCounts[s.value] ?? 0 }))
+  }, [changes])
+
+  const [viewSectionIndex, setViewSectionIndex] = useState(0)
+  const [viewSearchMatches, setViewSearchMatches] = useState<string[]>([])
+  const [viewSearchMatchIndex, setViewSearchMatchIndex] = useState(0)
+
+  // Keep viewSectionIndex in sync with viewTypeFilter
+  useEffect(() => {
+    const idx = viewSections.findIndex(s => s.value === viewTypeFilter)
+    if (idx >= 0) setViewSectionIndex(idx)
+  }, [viewTypeFilter, viewSections])
+
+  const viewSectionLabel = viewSections[viewSectionIndex]?.label ?? 'All'
+
+  function viewGoTo(index: number) {
+    const clamped = Math.max(0, Math.min(index, viewSections.length - 1))
+    setViewSectionIndex(clamped)
+    setViewTypeFilter(viewSections[clamped].value)
+    setHighlightedChangeId(null)
+  }
+
+  function viewGoNext() {
+    // If searching, advance to next match instead
+    if (viewSearchMatches.length > 0) {
+      const idx = (viewSearchMatchIndex + 1) % viewSearchMatches.length
+      setViewSearchMatchIndex(idx)
+      scrollToViewChange(viewSearchMatches[idx])
+      return
+    }
+    viewGoTo(viewSectionIndex + 1)
+  }
+
+  function viewGoPrev() {
+    if (viewSearchMatches.length > 0) {
+      const idx = (viewSearchMatchIndex - 1 + viewSearchMatches.length) % viewSearchMatches.length
+      setViewSearchMatchIndex(idx)
+      scrollToViewChange(viewSearchMatches[idx])
+      return
+    }
+    viewGoTo(viewSectionIndex - 1)
+  }
+
+  function findViewSection(input: string): number {
+    const q = input.trim().toLowerCase()
+    if (!q) return -1
+    return viewSections.findIndex(s => s.label.toLowerCase().startsWith(q) || s.value === q)
+  }
+
+  function scrollToViewChange(id: string) {
+    setHighlightedChangeId(id)
+    const el = document.querySelector(`[data-change-id="${id}"]`)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
+  function handleViewCardSearch(query: string) {
+    setViewCardSearch(query)
+    if (!query.trim()) {
+      setViewSearchMatches([])
+      setViewSearchMatchIndex(0)
+      setHighlightedChangeId(null)
+      return
+    }
+    const q = query.toLowerCase()
+    const matches = changes
+      .filter(ch =>
+        ch.cardsIn.some(c => c.name.toLowerCase().includes(q)) ||
+        ch.cardsOut.some(c => c.name.toLowerCase().includes(q))
+      )
+      .map(ch => ch.id)
+    setViewSearchMatches(matches)
+    if (matches.length > 0) {
+      setViewSearchMatchIndex(0)
+      scrollToViewChange(matches[0])
+      // Also switch to the type section that contains the first match
+      const firstMatch = changes.find(ch => ch.id === matches[0])
+      if (firstMatch) {
+        const matchType = computeChangeType(firstMatch.cardsOut, firstMatch.cardsIn, firstMatch.type)
+        const sIdx = viewSections.findIndex(s => s.value === matchType)
+        if (sIdx >= 0 && viewTypeFilter !== 'all' && viewTypeFilter !== matchType) {
+          setViewTypeFilter('all')
+          setViewSectionIndex(0)
+        }
+      }
+    } else {
+      setHighlightedChangeId(null)
+    }
+  }
+
+  const viewSearchMatchInfo = viewSearchMatches.length > 0
+    ? `${viewSearchMatchIndex + 1}/${viewSearchMatches.length}`
+    : viewCardSearch.trim() ? '0/0' : undefined
 
   // Subscribe to changes subcollection
   useEffect(() => {
@@ -997,17 +980,31 @@ function ReviewWorkspace({
           </div>
 
           {/* Center column — always truly centered over the column join */}
-          <SectionNav
-            currentIndex={currentIndex}
-            total={total}
-            currentLabel={currentLabel}
-            onPrev={goPrev}
-            onNext={goNext}
-            onGoTo={goTo}
-            findSection={findSection}
-            disabled={mode === 'view'}
-            sectionComplete={isSectionComplete}
-          />
+          {mode === 'edit' ? (
+            <SectionNav
+              currentIndex={currentIndex}
+              total={total}
+              currentLabel={currentLabel}
+              onPrev={goPrev}
+              onNext={goNext}
+              onGoTo={goTo}
+              findSection={findSection}
+              sectionComplete={isSectionComplete}
+            />
+          ) : (
+            <SectionNav
+              currentIndex={viewSectionIndex}
+              total={viewSections.length}
+              currentLabel={viewSectionLabel}
+              onPrev={viewGoPrev}
+              onNext={viewGoNext}
+              onGoTo={viewGoTo}
+              findSection={findViewSection}
+              onCardSearch={handleViewCardSearch}
+              searchMatchInfo={viewSearchMatchInfo}
+              placeholder="Type or search cards…"
+            />
+          )}
 
           {/* Right column */}
           <div className="flex items-center justify-end gap-1 min-w-0">
@@ -1159,11 +1156,7 @@ function ReviewWorkspace({
             identity={identity}
             reviewId={reviewId!}
             viewTypeFilter={viewTypeFilter}
-            setViewTypeFilter={setViewTypeFilter}
-            viewCardSearch={viewCardSearch}
-            setViewCardSearch={setViewCardSearch}
             highlightedChangeId={highlightedChangeId}
-            setHighlightedChangeId={setHighlightedChangeId}
             approvedSectionOpen={approvedSectionOpen}
             setApprovedSectionOpen={setApprovedSectionOpen}
             isApproved={isApproved}
