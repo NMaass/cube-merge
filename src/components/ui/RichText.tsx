@@ -1,30 +1,48 @@
+import { useState } from 'react'
 import { getCachedImage } from '../../lib/imageCache'
 import { CardHoverPortal } from '../cards/CardHoverPortal'
+import { FullscreenCardModal } from '../cards/FullscreenCardModal'
 import { useCardHoverPreview } from '../../hooks/useCardHoverPreview'
 
-/** Inline card mention chip with hover preview. */
-function CardMention({ name }: { name: string }) {
+/** Inline card mention — styled as underlined colored text.
+ *  Desktop: hover shows floating card preview.
+ *  Mobile: tap opens fullscreen card modal. */
+function CardMention({ name, colorClass }: { name: string; colorClass: string }) {
   const { hoverPos, setPosition, close } = useCardHoverPreview()
+  const [previewOpen, setPreviewOpen] = useState(false)
   const imageUrl = getCachedImage(name) ?? undefined
 
   return (
     <>
-      <span
-        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-slate-700 text-amber-300 text-xs font-medium cursor-default hover:bg-slate-600 transition-colors"
+      <button
+        type="button"
+        className={`underline decoration-1 underline-offset-2 ${colorClass} hover:brightness-125 transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500 focus-visible:rounded-sm`}
+        onClick={() => setPreviewOpen(true)}
         onMouseMove={e => imageUrl && setPosition(e.clientX, e.clientY, false)}
         onMouseLeave={close}
+        aria-label={`Preview ${name}`}
       >
-        <svg className="w-2.5 h-2.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect x="4" y="2" width="16" height="20" rx="2" strokeWidth={2} /><circle cx="12" cy="12" r="3" strokeWidth={2} /></svg>
         {name}
-      </span>
+      </button>
       <CardHoverPortal hoverPos={hoverPos} imageUrl={imageUrl} cardName={name} />
+      <FullscreenCardModal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        cardName={name}
+        imageUrl={imageUrl}
+      />
     </>
   )
 }
 
-/** Renders text with [[Card Name]] patterns as hoverable card mention chips. */
-export function RichText({ body, className }: { body: string; className?: string }) {
-  // Parse [[Card Name]] mentions
+/** Renders text with [[Card Name]] patterns as interactive card mentions.
+ *  @param cardColors Optional map of card name → Tailwind text color class.
+ *    Falls back to text-amber-300 for unmatched cards. */
+export function RichText({ body, className, cardColors }: {
+  body: string
+  className?: string
+  cardColors?: Record<string, string>
+}) {
   const segments: Array<{ text: string; isCard?: boolean }> = []
   const pattern = /\[\[([^\]]+)\]\]/g
   let last = 0
@@ -41,7 +59,7 @@ export function RichText({ body, className }: { body: string; className?: string
     <p className={className ?? 'text-sm text-slate-200 whitespace-pre-wrap leading-relaxed'}>
       {segments.map((seg, i) =>
         seg.isCard
-          ? <CardMention key={i} name={seg.text} />
+          ? <CardMention key={i} name={seg.text} colorClass={cardColors?.[seg.text] ?? 'text-amber-300'} />
           : <span key={i}>{seg.text}</span>
       )}
     </p>

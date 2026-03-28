@@ -27,6 +27,13 @@ export function ChangeCard({ change, onAddComment, onSetCommentResolution, onEdi
   const commentCount = change.comments.length
   const displayType = computeChangeType(change.cardsOut, change.cardsIn, change.type)
 
+  // Map card names to colors for [[card]] mentions in comments
+  const cardColors: Record<string, string> = {}
+  const outColor = displayType === 'keep' ? 'text-teal-400' : 'text-red-400'
+  const inColor = displayType === 'reject' ? 'text-orange-400' : 'text-green-400'
+  for (const c of change.cardsOut) cardColors[c.name] = outColor
+  for (const c of change.cardsIn) cardColors[c.name] = inColor
+
   // Colored left border for keep/reject
   const borderAccent = displayType === 'keep'
     ? 'border-l-2 border-l-teal-500'
@@ -95,7 +102,7 @@ export function ChangeCard({ change, onAddComment, onSetCommentResolution, onEdi
       {/* Initial comment — plain note under the cards */}
       {change.initialComment && (
         <div className="mt-2.5 pl-1">
-          <RichText body={change.initialComment} className="text-sm text-slate-400 leading-snug whitespace-pre-wrap" />
+          <RichText body={change.initialComment} className="text-sm text-slate-400 leading-snug whitespace-pre-wrap" cardColors={cardColors} />
         </div>
       )}
 
@@ -129,6 +136,7 @@ export function ChangeCard({ change, onAddComment, onSetCommentResolution, onEdi
           onEditComment={onEditComment}
           diffCards={diffCards}
           reviewerNames={reviewerNames}
+          cardColors={cardColors}
         />
       )}
     </div>

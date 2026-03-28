@@ -10,9 +10,10 @@ interface CommentItemProps {
   onEdit?: (newBody: string) => void
   diffCards?: string[]
   reviewerNames?: string[]
+  cardColors?: Record<string, string>
 }
 
-export function CommentItem({ comment, onSetResolution, onEdit, diffCards = [], reviewerNames = [] }: CommentItemProps) {
+export function CommentItem({ comment, onSetResolution, onEdit, diffCards = [], reviewerNames = [], cardColors }: CommentItemProps) {
   const { identity } = useAuth()
   const [editing, setEditing] = useState(false)
   const [editBody, setEditBody] = useState('')
@@ -118,7 +119,7 @@ export function CommentItem({ comment, onSetResolution, onEdit, diffCards = [], 
             </div>
           </div>
         ) : (
-          <RichText body={comment.body} />
+          <RichText body={comment.body} cardColors={cardColors} />
         )}
       </div>
     </div>

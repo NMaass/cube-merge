@@ -9,9 +9,10 @@ interface CommentThreadProps {
   onEditComment?: (commentId: string, newBody: string) => void
   diffCards?: string[]
   reviewerNames?: string[]
+  cardColors?: Record<string, string>
 }
 
-export function CommentThread({ comments, onAddComment, onSetResolution, onEditComment, diffCards, reviewerNames }: CommentThreadProps) {
+export function CommentThread({ comments, onAddComment, onSetResolution, onEditComment, diffCards, reviewerNames, cardColors }: CommentThreadProps) {
   return (
     <div className="mt-2 border-t border-slate-700 pt-2">
       {comments.map(comment => (
@@ -22,6 +23,7 @@ export function CommentThread({ comments, onAddComment, onSetResolution, onEditC
           onEdit={onEditComment ? (newBody) => onEditComment(comment.id, newBody) : undefined}
           diffCards={diffCards}
           reviewerNames={reviewerNames}
+          cardColors={cardColors}
         />
       ))}
       {onAddComment && (
