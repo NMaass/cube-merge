@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { getCachedImage, setCachedImages } from '../lib/imageCache'
+import { fetchSingleCardImage } from '../lib/scryfall'
 
 export type SuggestionKind = 'card' | 'reviewer'
 export interface Suggestion { kind: SuggestionKind; value: string }
@@ -158,6 +160,12 @@ export function useAutocomplete({ diffCards = [], reviewerNames = [] }: UseAutoc
     if (!el) return
     const cursor = el.selectionStart
     const insert = s.kind === 'card' ? `[[${s.value}]]` : `@${s.value}`
+    // Pre-fetch card image so it's cached by the time the user views it
+    if (s.kind === 'card' && !getCachedImage(s.value)) {
+      fetchSingleCardImage(s.value).then(fresh => {
+        if (fresh.size > 0) setCachedImages(fresh)
+      }).catch(() => {})
+    }
     const before = body.slice(0, triggerStart)
     const after = body.slice(cursor)
     const newBody = before + insert + ' ' + after
