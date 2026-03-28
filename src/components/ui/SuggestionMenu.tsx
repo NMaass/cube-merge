@@ -1,4 +1,6 @@
+import { useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { useFloating, autoUpdate, flip, shift, offset, size } from '@floating-ui/react'
 import { Suggestion, CaretAnchor } from '../../hooks/useAutocomplete'
 
 interface SuggestionMenuProps {
@@ -8,27 +10,62 @@ interface SuggestionMenuProps {
 }
 
 const MENU_WIDTH = 220
-const MIN_HEIGHT = 80
+
+function useIsMobile() {
+  // Treat narrow viewports as mobile (virtual keyboard likely present)
+  return typeof window !== 'undefined' && window.innerWidth < 768
+}
 
 export function SuggestionMenu({ suggestions, anchor, onSelect }: SuggestionMenuProps) {
-  if (!anchor || suggestions.length === 0) return null
-  const vh = window.visualViewport?.height ?? window.innerHeight
-  const vw = window.visualViewport?.width ?? window.innerWidth
-  const caretBottom = anchor.top + anchor.lineHeight
-  const left = Math.max(4, Math.min(anchor.left, vw - MENU_WIDTH - 4))
-  const spaceBelow = vh - caretBottom - 8
-  const flipAbove = spaceBelow < MIN_HEIGHT && anchor.top - 8 > spaceBelow
-  const posStyle = flipAbove
-    ? { bottom: vh - anchor.top + 4, maxHeight: Math.min(192, anchor.top - 8) }
-    : { top: caretBottom + 4, maxHeight: Math.min(192, spaceBelow) }
+  const isOpen = !!anchor && suggestions.length > 0
+  const isMobile = useIsMobile()
+
+  // Virtual reference element positioned at the caret
+  const virtualRef = useRef<{ getBoundingClientRect: () => DOMRect }>({
+    getBoundingClientRect: () => new DOMRect(),
+  })
+
+  // Update virtual ref when anchor changes
+  useEffect(() => {
+    virtualRef.current = {
+      getBoundingClientRect: () => {
+        if (!anchor) return new DOMRect()
+        return new DOMRect(anchor.left, anchor.top, 0, anchor.lineHeight)
+      },
+    }
+  }, [anchor])
+
+  const { refs, floatingStyles } = useFloating({
+    open: isOpen,
+    placement: isMobile ? 'top-start' : 'bottom-start',
+    middleware: [
+      offset(4),
+      flip({ padding: 8 }),
+      shift({ padding: 8 }),
+      size({
+        padding: 8,
+        apply({ availableHeight, elements }) {
+          elements.floating.style.maxHeight = `${Math.min(192, Math.max(80, availableHeight))}px`
+        },
+      }),
+    ],
+    whileElementsMounted: autoUpdate,
+  })
+
+  // Sync virtual ref to floating-ui's reference
+  useEffect(() => {
+    refs.setReference(virtualRef.current as unknown as HTMLElement)
+  }, [refs, anchor])
+
+  if (!isOpen) return null
+
   return createPortal(
     <div
+      ref={refs.setFloating}
       role="listbox"
       aria-label="Suggestions"
       style={{
-        position: 'fixed',
-        ...posStyle,
-        left,
+        ...floatingStyles,
         width: MENU_WIDTH,
         zIndex: 9999,
       }}

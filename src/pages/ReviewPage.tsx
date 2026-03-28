@@ -16,13 +16,13 @@ import { Notice } from '../components/ui/Notice'
 import { SectionNav } from '../components/diff/SectionNav'
 import { DiffList } from '../components/diff/DiffList'
 import { ModeToggle } from '../components/diff/ModeToggle'
-import { ChangeModal } from '../components/diff/ChangeModal'
+import { UnifiedChangeModal, ChangeData } from '../components/changes/UnifiedChangeModal'
 import { PassModal } from '../components/diff/PassModal'
-import { EditChangeModal } from '../components/changes/EditChangeModal'
 import { SplitChangeModal } from '../components/changes/SplitChangeModal'
 import { ChangeCard } from '../components/changes/ChangeCard'
 import { useCardImages } from '../hooks/useCardImages'
 import { useSectionNav } from '../hooks/useSectionNav'
+import { useApprovedChanges } from '../hooks/useApprovedChanges'
 import { groupBySection, sectionLabel, parseSectionNotation } from '../lib/sorting'
 import { computeChangeType } from '../lib/changes'
 import { recordCubeCards } from '../lib/cubeCards'
@@ -33,6 +33,242 @@ import {
 import { Modal } from '../components/ui/Modal'
 
 const COPY_FEEDBACK_DURATION_MS = 2000
+
+// ── Type filter tabs for view mode ───────────────────────────────────────────
+
+const TYPE_FILTERS: { value: ChangeType | 'all'; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'swap', label: 'Swaps' },
+  { value: 'add', label: 'Adds' },
+  { value: 'remove', label: 'Removes' },
+  { value: 'keep', label: 'Keeps' },
+  { value: 'reject', label: 'Rejects' },
+]
+
+// ── View mode panel ──────────────────────────────────────────────────────────
+
+function ViewModePanel({
+  changes, identity, reviewId,
+  viewTypeFilter, setViewTypeFilter,
+  viewCardSearch, setViewCardSearch,
+  highlightedChangeId, setHighlightedChangeId,
+  approvedSectionOpen, setApprovedSectionOpen,
+  isApproved, isStale,
+  onApprove, onUnapprove,
+  onAddComment, onSetCommentResolution, onEditComment, onEdit,
+  allDiffCards, reviewerNames,
+}: {
+  changes: LiveChange[]
+  identity: { id: string; displayName: string }
+  reviewId: string
+  viewTypeFilter: ChangeType | 'all'
+  setViewTypeFilter: (f: ChangeType | 'all') => void
+  viewCardSearch: string
+  setViewCardSearch: (s: string) => void
+  highlightedChangeId: string | null
+  setHighlightedChangeId: (id: string | null) => void
+  approvedSectionOpen: boolean
+  setApprovedSectionOpen: (open: boolean) => void
+  isApproved: (id: string) => boolean
+  isStale: (id: string, updatedAt: number, authorId?: string) => boolean
+  onApprove: (ch: LiveChange) => void
+  onUnapprove: (ch: LiveChange) => void
+  onAddComment: (changeId: string, body: string, res: CommentResolution) => void
+  onSetCommentResolution: (changeId: string, commentId: string, res: CommentResolution) => void
+  onEditComment: (changeId: string, commentId: string, newBody: string) => void
+  onEdit: (ch: LiveChange) => void
+  allDiffCards: string[]
+  reviewerNames: string[]
+}) {
+  if (changes.length === 0) {
+    return (
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="text-center py-16 px-4">
+          <div className="text-3xl mb-3 opacity-30">±</div>
+          <p className="text-slate-400 font-medium">No changes yet</p>
+          <p className="text-sm text-slate-600 mt-1">Select cards in Edit mode to start annotating</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Stats
+  const addedNames = new Set<string>()
+  const removedNames = new Set<string>()
+  for (const ch of changes) {
+    const dt = computeChangeType(ch.cardsOut, ch.cardsIn, ch.type)
+    if (dt === 'add' || dt === 'swap') ch.cardsIn.forEach(c => addedNames.add(c.name))
+    if (dt === 'remove' || dt === 'swap') ch.cardsOut.forEach(c => removedNames.add(c.name))
+  }
+  const totalIn = addedNames.size
+  const totalOut = removedNames.size
+  const net = totalIn - totalOut
+
+  // Type counts for filter badges
+  const typeCounts: Record<string, number> = { all: changes.length }
+  for (const ch of changes) {
+    const dt = computeChangeType(ch.cardsOut, ch.cardsIn, ch.type)
+    typeCounts[dt] = (typeCounts[dt] ?? 0) + 1
+  }
+
+  // Sort
+  const myMention = `@${identity.displayName}`
+  const hasMention = (c: LiveChange) =>
+    identity.displayName !== 'Reviewer' &&
+    c.comments.some(cm => cm.body.toLowerCase().includes(myMention.toLowerCase()))
+  const sorted = [...changes].sort((a, b) => {
+    const aM = hasMention(a), bM = hasMention(b)
+    if (aM && !bM) return -1
+    if (!aM && bM) return 1
+    if (a.unresolved && !b.unresolved) return -1
+    if (!a.unresolved && b.unresolved) return 1
+    return (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0)
+  })
+
+  // Filter by type
+  const typeFiltered = viewTypeFilter === 'all'
+    ? sorted
+    : sorted.filter(ch => computeChangeType(ch.cardsOut, ch.cardsIn, ch.type) === viewTypeFilter)
+
+  // Split into active vs approved
+  const effectivelyApproved = (ch: LiveChange) =>
+    isApproved(ch.id) && !isStale(ch.id, ch.updatedAt?.toMillis() ?? ch.createdAt?.toMillis() ?? 0, ch.updatedBy)
+  const activeChanges = typeFiltered.filter(ch => !effectivelyApproved(ch))
+  const approvedChanges = typeFiltered.filter(ch => effectivelyApproved(ch))
+
+  // Card search: scroll to matching change
+  function handleCardSearch(query: string) {
+    setViewCardSearch(query)
+    if (!query.trim()) {
+      setHighlightedChangeId(null)
+      return
+    }
+    const q = query.toLowerCase()
+    const match = changes.find(ch =>
+      ch.cardsIn.some(c => c.name.toLowerCase().includes(q)) ||
+      ch.cardsOut.some(c => c.name.toLowerCase().includes(q))
+    )
+    if (match) {
+      setHighlightedChangeId(match.id)
+      const el = document.querySelector(`[data-change-id="${match.id}"]`)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // Clear highlight after animation
+      setTimeout(() => setHighlightedChangeId(null), 2000)
+    }
+  }
+
+  function renderChangeCard(change: LiveChange, approved: boolean) {
+    return (
+      <ChangeCard
+        key={change.id}
+        change={change}
+        onAddComment={(body, res) => onAddComment(change.id, body, res)}
+        onSetCommentResolution={(commentId, res) => onSetCommentResolution(change.id, commentId, res)}
+        onEditComment={(commentId, newBody) => onEditComment(change.id, commentId, newBody)}
+        onEdit={() => onEdit(change)}
+        onApprove={() => approved ? onUnapprove(change) : onApprove(change)}
+        isApproved={approved}
+        diffCards={allDiffCards}
+        reviewerNames={reviewerNames}
+        highlighted={highlightedChangeId === change.id}
+      />
+    )
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      {/* Type filter tabs */}
+      <div className="flex gap-1 flex-wrap">
+        {TYPE_FILTERS.map(f => {
+          const count = typeCounts[f.value] ?? 0
+          if (f.value !== 'all' && count === 0) return null
+          return (
+            <button
+              key={f.value}
+              onClick={() => setViewTypeFilter(f.value)}
+              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                viewTypeFilter === f.value
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                  : 'bg-slate-700/60 text-slate-400 border border-slate-600/60 hover:text-slate-200 hover:border-slate-500'
+              }`}
+            >
+              {f.label}
+              <span className="ml-1 opacity-60">({count})</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Card search */}
+      <input
+        type="text"
+        value={viewCardSearch}
+        onChange={e => handleCardSearch(e.target.value)}
+        placeholder="Search by card name…"
+        className="w-full bg-slate-700/60 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
+      />
+
+      {/* Stats bar */}
+      <div className="flex items-center gap-6 px-2 py-3 mb-1 border-b border-slate-700/60">
+        <div className="text-center">
+          <div className="text-xl font-bold text-green-400 leading-none">+{totalIn}</div>
+          <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">in</div>
+        </div>
+        <div className="text-center">
+          <div className="text-xl font-bold text-red-400 leading-none">−{totalOut}</div>
+          <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">out</div>
+        </div>
+        <div className="text-center">
+          <div className={`text-xl font-bold leading-none ${net >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+            {net >= 0 ? '+' : ''}{net}
+          </div>
+          <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">net</div>
+        </div>
+        <Link
+          to={`/c/${reviewId}/changelog`}
+          className="text-center ml-auto group"
+          title="View changelog"
+        >
+          <div className="text-xl font-bold text-slate-400 group-hover:text-amber-400 transition-colors leading-none">{changes.length}</div>
+          <div className="text-[10px] text-slate-500 group-hover:text-amber-400 uppercase tracking-wider mt-0.5 transition-colors flex items-center justify-center gap-0.5">
+            changes
+            <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </Link>
+      </div>
+
+      {/* Active changes */}
+      {activeChanges.map(ch => renderChangeCard(ch, false))}
+
+      {/* Approved disclosure group */}
+      {approvedChanges.length > 0 && (
+        <div className="mt-4 border-t border-slate-700/60 pt-3">
+          <button
+            onClick={() => setApprovedSectionOpen(!approvedSectionOpen)}
+            className="flex items-center gap-2 w-full text-left px-2 py-2 rounded-lg hover:bg-slate-700/40 transition-colors"
+          >
+            <svg
+              className={`w-4 h-4 text-green-400 transition-transform ${approvedSectionOpen ? 'rotate-180' : ''}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+            <span className="text-sm font-medium text-green-400">
+              Approved ({approvedChanges.length})
+            </span>
+          </button>
+          {approvedSectionOpen && (
+            <div className="space-y-3 mt-3">
+              {approvedChanges.map(ch => renderChangeCard(ch, true))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function cleanForFirestore(obj: unknown): unknown {
   if (obj instanceof Timestamp) return obj
@@ -64,8 +300,7 @@ function ReviewWorkspace({
   const [changesLoading, setChangesLoading] = useState(true)
   const [mode, setMode] = useState<'edit' | 'view'>(searchParams.get('mode') === 'view' ? 'view' : 'edit')
   const [modalOpen, setModalOpen] = useState(false)
-  const [keepModalOpen, setKeepModalOpen] = useState(false)
-  const [rejectModalOpen, setRejectModalOpen] = useState(false)
+  const [modalForceType, setModalForceType] = useState<ChangeType | undefined>()
   const [passModalOpen, setPassModalOpen] = useState(false)
   const [editingChange, setEditingChange] = useState<LiveChange | null>(null)
   const [splittingChange, setSplittingChange] = useState<LiveChange | null>(null)
@@ -83,6 +318,14 @@ function ReviewWorkspace({
   const [actionError, setActionError] = useState<string | null>(null)
   const [shareMenuOpen, setShareMenuOpen] = useState(false)
   const shareMenuRef = useRef<HTMLDivElement>(null)
+
+  // View mode: type filter, card search, approval
+  const [viewTypeFilter, setViewTypeFilter] = useState<ChangeType | 'all'>('all')
+  const [viewCardSearch, setViewCardSearch] = useState('')
+  const [highlightedChangeId, setHighlightedChangeId] = useState<string | null>(null)
+  const [approvedSectionOpen, setApprovedSectionOpen] = useState(false)
+  const [resolveConfirmChange, setResolveConfirmChange] = useState<LiveChange | null>(null)
+  const { approve, unapprove, isApproved, isStale } = useApprovedChanges(reviewId!)
 
   const diffData = review.rawData
   const cubeAId = review.cubeAId
@@ -481,6 +724,28 @@ function ReviewWorkspace({
     }
   }
 
+  function openModalWithType(type?: ChangeType) {
+    setModalForceType(type)
+    setModalOpen(true)
+  }
+
+  /** Unified handler for both create and edit from UnifiedChangeModal. */
+  async function handleUnifiedSave(data: ChangeData) {
+    if (data.changeId) {
+      // Edit mode
+      await handleEditChange(data.changeId, {
+        initialComment: data.comment,
+        cardsOut: data.cardsOut,
+        cardsIn: data.cardsIn,
+        type: data.type,
+        unresolved: data.unresolved,
+      })
+    } else {
+      // Create mode
+      await handleSaveChange(data.type, data.cardsOut, data.cardsIn, data.comment, data.unresolved)
+    }
+  }
+
   async function handleSavePass(comment: string, unresolved: boolean) {
     clearSelection()
     const now = Timestamp.now()
@@ -701,12 +966,12 @@ function ReviewWorkspace({
                   {actionLabel}
                 </Button>
                 {hasLeft && !hasRight && (
-                  <Button size="sm" variant="keep" onClick={() => setKeepModalOpen(true)}>
+                  <Button size="sm" variant="keep" onClick={() => openModalWithType('keep')}>
                     Keep
                   </Button>
                 )}
                 {hasRight && !hasLeft && (
-                  <Button size="sm" variant="reject" onClick={() => setRejectModalOpen(true)}>
+                  <Button size="sm" variant="reject" onClick={() => openModalWithType('reject')}>
                     Reject
                   </Button>
                 )}
@@ -821,10 +1086,10 @@ function ReviewWorkspace({
                   {actionLabel}
                 </Button>
                 {hasLeft && !hasRight && (
-                  <Button size="sm" variant="keep" className="min-h-[44px]" onClick={() => setKeepModalOpen(true)}>Keep</Button>
+                  <Button size="sm" variant="keep" className="min-h-[44px]" onClick={() => openModalWithType('keep')}>Keep</Button>
                 )}
                 {hasRight && !hasLeft && (
-                  <Button size="sm" variant="reject" className="min-h-[44px]" onClick={() => setRejectModalOpen(true)}>Reject</Button>
+                  <Button size="sm" variant="reject" className="min-h-[44px]" onClick={() => openModalWithType('reject')}>Reject</Button>
                 )}
                 {hasLeft && hasRight && (
                   <Button size="sm" variant="pass" className="min-h-[44px]" onClick={() => setPassModalOpen(true)} title="Keep left cards + reject right cards">Pass</Button>
@@ -834,114 +1099,56 @@ function ReviewWorkspace({
             )}
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {changes.length === 0 ? (
-              <div className="text-center py-16 px-4">
-                <div className="text-3xl mb-3 opacity-30">±</div>
-                <p className="text-slate-400 font-medium">No changes yet</p>
-                <p className="text-sm text-slate-600 mt-1">Select cards in Edit mode to start annotating</p>
-              </div>
-            ) : (() => {
-              const addedNames = new Set<string>()
-              const removedNames = new Set<string>()
-              for (const ch of changes) {
-                const dt = computeChangeType(ch.cardsOut, ch.cardsIn, ch.type)
-                if (dt === 'add' || dt === 'swap') ch.cardsIn.forEach(c => addedNames.add(c.name))
-                if (dt === 'remove' || dt === 'swap') ch.cardsOut.forEach(c => removedNames.add(c.name))
+          <ViewModePanel
+            changes={changes}
+            identity={identity}
+            reviewId={reviewId!}
+            viewTypeFilter={viewTypeFilter}
+            setViewTypeFilter={setViewTypeFilter}
+            viewCardSearch={viewCardSearch}
+            setViewCardSearch={setViewCardSearch}
+            highlightedChangeId={highlightedChangeId}
+            setHighlightedChangeId={setHighlightedChangeId}
+            approvedSectionOpen={approvedSectionOpen}
+            setApprovedSectionOpen={setApprovedSectionOpen}
+            isApproved={isApproved}
+            isStale={isStale}
+            onApprove={(ch) => {
+              if (ch.unresolved) {
+                setResolveConfirmChange(ch)
+              } else {
+                approve(ch.id, ch.updatedAt?.toMillis() ?? ch.createdAt?.toMillis() ?? 0, identity.id)
               }
-              const totalIn = addedNames.size
-              const totalOut = removedNames.size
-              const net = totalIn - totalOut
-              const myMention = `@${identity.displayName}`
-              const hasMention = (c: LiveChange) =>
-                identity.displayName !== 'Reviewer' &&
-                c.comments.some(cm => cm.body.toLowerCase().includes(myMention.toLowerCase()))
-              const sorted = [...changes].sort((a, b) => {
-                const aM = hasMention(a), bM = hasMention(b)
-                if (aM && !bM) return -1
-                if (!aM && bM) return 1
-                if (a.unresolved && !b.unresolved) return -1
-                if (!a.unresolved && b.unresolved) return 1
-                return (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0)
-              })
-              return (
-                <>
-                  <div className="flex items-center gap-6 px-2 py-3 mb-1 border-b border-slate-700/60">
-                    <div className="text-center">
-                      <div className="text-xl font-bold text-green-400 leading-none">+{totalIn}</div>
-                      <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">in</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xl font-bold text-red-400 leading-none">−{totalOut}</div>
-                      <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">out</div>
-                    </div>
-                    <div className="text-center">
-                      <div className={`text-xl font-bold leading-none ${net >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                        {net >= 0 ? '+' : ''}{net}
-                      </div>
-                      <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">net</div>
-                    </div>
-                    <Link
-                      to={`/c/${reviewId}/changelog`}
-                      className="text-center ml-auto group"
-                      title="View changelog"
-                    >
-                      <div className="text-xl font-bold text-slate-400 group-hover:text-amber-400 transition-colors leading-none">{changes.length}</div>
-                      <div className="text-[10px] text-slate-500 group-hover:text-amber-400 uppercase tracking-wider mt-0.5 transition-colors flex items-center justify-center gap-0.5">
-                        changes
-                        <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
-                    </Link>
-                  </div>
-                  {sorted.map(change => (
-                    <ChangeCard
-                      key={change.id}
-                      change={change}
-                      onAddComment={(body, res) => handleAddComment(change.id, body, res)}
-                      onSetCommentResolution={(commentId, res) => handleSetCommentResolution(change.id, commentId, res)}
-                      onEditComment={(commentId, newBody) => handleEditComment(change.id, commentId, newBody)}
-                      onEdit={() => setEditingChange(change)}
-                      diffCards={allDiffCards}
-                      reviewerNames={reviewerNames}
-                    />
-                  ))}
-                </>
-              )
-            })()}
-          </div>
+            }}
+            onUnapprove={(ch) => unapprove(ch.id)}
+            onAddComment={(changeId, body, res) => handleAddComment(changeId, body, res)}
+            onSetCommentResolution={(changeId, commentId, res) => handleSetCommentResolution(changeId, commentId, res)}
+            onEditComment={(changeId, commentId, newBody) => handleEditComment(changeId, commentId, newBody)}
+            onEdit={(ch) => setEditingChange(ch)}
+            allDiffCards={allDiffCards}
+            reviewerNames={reviewerNames}
+          />
         )}
 
-        {/* Modals */}
-        <ChangeModal
-          open={modalOpen}
-          onClose={() => setModalOpen(false)}
+        {/* Unified change modal — create or edit */}
+        <UnifiedChangeModal
+          open={modalOpen || !!editingChange}
+          onClose={() => { setModalOpen(false); setEditingChange(null); setModalForceType(undefined) }}
           selectedLeftCards={selectedLeftCards}
           selectedRightCards={selectedRightCards}
-          onSave={handleSaveChange}
-          allDiffCards={allDiffCards}
+          initialType={modalForceType}
+          existingChange={editingChange ?? undefined}
+          allCardsA={diffData.onlyA}
+          allCardsB={diffData.onlyB}
+          onSave={handleUnifiedSave}
+          onDelete={editingChange ? handleDeleteChange : undefined}
+          onSplit={editingChange && (editingChange.cardsIn.length + editingChange.cardsOut.length > 1) ? () => {
+            setSplittingChange(editingChange)
+            setEditingChange(null)
+          } : undefined}
+          diffCards={allDiffCards}
           reviewerNames={reviewerNames}
-        />
-        <ChangeModal
-          open={keepModalOpen}
-          onClose={() => setKeepModalOpen(false)}
-          selectedLeftCards={selectedLeftCards}
-          selectedRightCards={selectedRightCards}
-          onSave={handleSaveChange}
-          forceType="keep"
-          allDiffCards={allDiffCards}
-          reviewerNames={reviewerNames}
-        />
-        <ChangeModal
-          open={rejectModalOpen}
-          onClose={() => setRejectModalOpen(false)}
-          selectedLeftCards={selectedLeftCards}
-          selectedRightCards={selectedRightCards}
-          onSave={handleSaveChange}
-          forceType="reject"
-          allDiffCards={allDiffCards}
-          reviewerNames={reviewerNames}
+          onClearSelection={clearSelection}
         />
         <PassModal
           open={passModalOpen}
@@ -950,22 +1157,6 @@ function ReviewWorkspace({
           rightCards={selectedRightCards}
           onSave={handleSavePass}
         />
-
-        {editingChange && (
-          <EditChangeModal
-            open={!!editingChange}
-            onClose={() => setEditingChange(null)}
-            change={editingChange}
-            allCardsA={diffData.onlyA}
-            allCardsB={diffData.onlyB}
-            onSave={handleEditChange}
-            onDelete={handleDeleteChange}
-            onSplit={editingChange.cardsIn.length + editingChange.cardsOut.length > 1 ? () => {
-              setSplittingChange(editingChange)
-              setEditingChange(null)
-            } : undefined}
-          />
-        )}
 
         {splittingChange && (
           <SplitChangeModal
@@ -1029,6 +1220,38 @@ function ReviewWorkspace({
               <Button size="sm" variant="primary" onClick={handleCopyExport} className={copyPop ? 'copy-pop' : ''}>
                 {copied ? '✓ Copied!' : 'Copy to clipboard'}
               </Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Resolve confirmation dialog */}
+        <Modal
+          open={!!resolveConfirmChange}
+          onClose={() => setResolveConfirmChange(null)}
+          title="Resolve before approving?"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-slate-400">
+              This change is marked as unresolved. Would you like to mark it as resolved?
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" size="sm" onClick={() => {
+                if (resolveConfirmChange) {
+                  approve(resolveConfirmChange.id, resolveConfirmChange.updatedAt?.toMillis() ?? resolveConfirmChange.createdAt?.toMillis() ?? 0, identity.id)
+                }
+                setResolveConfirmChange(null)
+              }}>No, keep unresolved</Button>
+              <Button size="sm" onClick={async () => {
+                if (resolveConfirmChange) {
+                  try {
+                    await updateDoc(changeDocRef(resolveConfirmChange.id), { unresolved: false })
+                  } catch (e) {
+                    showActionError('Could not mark as resolved.', e)
+                  }
+                  approve(resolveConfirmChange.id, resolveConfirmChange.updatedAt?.toMillis() ?? resolveConfirmChange.createdAt?.toMillis() ?? 0, identity.id)
+                }
+                setResolveConfirmChange(null)
+              }}>Yes, resolve</Button>
             </div>
           </div>
         </Modal>

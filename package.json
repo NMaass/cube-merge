@@ -11,6 +11,7 @@
     "cf:deploy": "npm run build && npx -y wrangler@latest pages deploy dist --project-name cube-merge --branch main --commit-dirty"
   },
   "dependencies": {
+    "@floating-ui/react": "^0.27.19",
     "@sentry/react": "^10.43.0",
     "@types/react-window": "^1.8.8",
     "firebase": "^12.10.0",

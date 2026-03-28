@@ -108,9 +108,9 @@ export default function LandingPage() {
     navigate(`/c/${reviewId}`)
   }
 
-  async function handleStart() {
-    const idA = parseCubeCobraId(cubeAInput.trim())
-    const idB = parseCubeCobraId(cubeBInput.trim())
+  async function handleStart(overrideA?: string, overrideB?: string) {
+    const idA = parseCubeCobraId((overrideA ?? cubeAInput).trim())
+    const idB = parseCubeCobraId((overrideB ?? cubeBInput).trim())
     if (!idA) { setValidationError('Cube A ID is required'); return }
     if (!idB) { setValidationError('Cube B ID is required'); return }
     if (idA === idB) { setValidationError('Cube A and Cube B must be different'); return }
@@ -274,7 +274,7 @@ export default function LandingPage() {
                     Create Review From JSON
                   </Button>
                   <Button
-                    onClick={handleStart}
+                    onClick={() => handleStart()}
                     variant="secondary"
                     className="w-full sm:w-auto"
                   >
@@ -412,6 +412,16 @@ export default function LandingPage() {
                 Start Review →
               </Button>
             </form>
+
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => handleStart('LSVCube', 'modovintage')}
+                className="text-sm text-slate-400 hover:text-amber-400 transition-colors underline underline-offset-2"
+              >
+                Try it with LSV Vintage Cube vs Modo Vintage →
+              </button>
+            </div>
 
             <div className="text-center text-sm text-slate-500 space-y-1">
               <p>Or open a published snapshot:</p>
