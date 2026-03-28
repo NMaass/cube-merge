@@ -36,20 +36,19 @@ const COPY_FEEDBACK_DURATION_MS = 2000
 
 // ── Type filter tabs for view mode ───────────────────────────────────────────
 
-const VIEW_SECTIONS: { value: ChangeType | 'all'; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'swap', label: 'Swaps' },
-  { value: 'add', label: 'Adds' },
-  { value: 'remove', label: 'Removes' },
-  { value: 'keep', label: 'Keeps' },
-  { value: 'reject', label: 'Rejects' },
-]
+const TYPE_ORDER: ChangeType[] = ['swap', 'add', 'remove', 'keep', 'reject']
+const TYPE_LABELS: Record<ChangeType, string> = {
+  swap: 'Swaps', add: 'Adds', remove: 'Removes', keep: 'Keeps', reject: 'Rejects',
+}
+const TYPE_HEADER_COLORS: Record<ChangeType, string> = {
+  swap: 'text-amber-400', add: 'text-green-400', remove: 'text-red-400',
+  keep: 'text-teal-400', reject: 'text-orange-400',
+}
 
 // ── View mode panel ──────────────────────────────────────────────────────────
 
 function ViewModePanel({
   changes, identity, reviewId,
-  viewTypeFilter,
   highlightedChangeId,
   approvedSectionOpen, setApprovedSectionOpen,
   isApproved, isStale,
@@ -60,7 +59,6 @@ function ViewModePanel({
   changes: LiveChange[]
   identity: { id: string; displayName: string }
   reviewId: string
-  viewTypeFilter: ChangeType | 'all'
   highlightedChangeId: string | null
   approvedSectionOpen: boolean
   setApprovedSectionOpen: (open: boolean) => void
@@ -99,30 +97,41 @@ function ViewModePanel({
   const totalOut = removedNames.size
   const net = totalIn - totalOut
 
-  // Sort
+  // Sort within-group: unresolved first, then mentions, then recency
   const myMention = `@${identity.displayName}`
   const hasMention = (c: LiveChange) =>
     !/^Reviewer\d*$/.test(identity.displayName) &&
     c.comments.some(cm => cm.body.toLowerCase().includes(myMention.toLowerCase()))
-  const sorted = [...changes].sort((a, b) => {
+
+  function withinGroupSort(a: LiveChange, b: LiveChange) {
+    if (a.unresolved && !b.unresolved) return -1
+    if (!a.unresolved && b.unresolved) return 1
     const aM = hasMention(a), bM = hasMention(b)
     if (aM && !bM) return -1
     if (!aM && bM) return 1
-    if (a.unresolved && !b.unresolved) return -1
-    if (!a.unresolved && b.unresolved) return 1
     return (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0)
-  })
-
-  // Filter by type
-  const typeFiltered = viewTypeFilter === 'all'
-    ? sorted
-    : sorted.filter(ch => computeChangeType(ch.cardsOut, ch.cardsIn, ch.type) === viewTypeFilter)
+  }
 
   // Split into active vs approved
   const effectivelyApproved = (ch: LiveChange) =>
     isApproved(ch.id) && !isStale(ch.id, ch.updatedAt?.toMillis() ?? ch.createdAt?.toMillis() ?? 0, ch.updatedBy)
-  const activeChanges = typeFiltered.filter(ch => !effectivelyApproved(ch))
-  const approvedChanges = typeFiltered.filter(ch => effectivelyApproved(ch))
+
+  // Group active changes by type, in TYPE_ORDER
+  const grouped: { type: ChangeType; label: string; changes: LiveChange[] }[] = []
+  const byType = new Map<ChangeType, LiveChange[]>()
+  for (const ch of changes) {
+    if (effectivelyApproved(ch)) continue
+    const dt = computeChangeType(ch.cardsOut, ch.cardsIn, ch.type)
+    if (!byType.has(dt)) byType.set(dt, [])
+    byType.get(dt)!.push(ch)
+  }
+  for (const t of TYPE_ORDER) {
+    const group = byType.get(t)
+    if (group && group.length > 0) {
+      grouped.push({ type: t, label: TYPE_LABELS[t], changes: group.sort(withinGroupSort) })
+    }
+  }
+  const approvedChanges = changes.filter(ch => effectivelyApproved(ch)).sort(withinGroupSort)
 
   function renderChangeCard(change: LiveChange, approved: boolean) {
     return (
@@ -141,6 +150,8 @@ function ViewModePanel({
       />
     )
   }
+
+  const unresolvedCount = changes.filter(c => c.unresolved && !effectivelyApproved(c)).length
 
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -175,12 +186,36 @@ function ViewModePanel({
         </Link>
       </div>
 
-      {/* Active changes */}
-      {activeChanges.map(ch => renderChangeCard(ch, false))}
+      {/* Unresolved anchor (invisible, for scroll targeting) */}
+      {unresolvedCount > 0 && <div id="view-section-unresolved" />}
+
+      {/* Type-grouped changes with headers */}
+      {grouped.map(g => {
+        const groupUnresolved = g.changes.filter(c => c.unresolved).length
+        return (
+          <div key={g.type}>
+            <div
+              id={`view-section-${g.type}`}
+              className="flex items-center gap-2 pt-2 pb-1.5"
+            >
+              <span className={`text-xs font-semibold uppercase tracking-wider ${TYPE_HEADER_COLORS[g.type]}`}>
+                {g.label}
+              </span>
+              <span className="text-xs text-slate-600">{g.changes.length}</span>
+              {groupUnresolved > 0 && (
+                <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 shrink-0" title={`${groupUnresolved} unresolved`} />
+              )}
+            </div>
+            <div className="space-y-3">
+              {g.changes.map(ch => renderChangeCard(ch, false))}
+            </div>
+          </div>
+        )
+      })}
 
       {/* Approved disclosure group */}
       {approvedChanges.length > 0 && (
-        <div className="mt-4 border-t border-slate-700/60 pt-3">
+        <div id="view-section-approved" className="mt-4 border-t border-slate-700/60 pt-3">
           <button
             onClick={() => setApprovedSectionOpen(!approvedSectionOpen)}
             className="flex items-center gap-2 w-full text-left px-2 py-2 rounded-lg hover:bg-slate-700/40 transition-colors"
@@ -256,7 +291,6 @@ function ReviewWorkspace({
   const shareMenuRef = useRef<HTMLDivElement>(null)
 
   // View mode: type filter, card search, approval
-  const [viewTypeFilter, setViewTypeFilter] = useState<ChangeType | 'all'>('all')
   const [viewCardSearch, setViewCardSearch] = useState('')
   const [highlightedChangeId, setHighlightedChangeId] = useState<string | null>(null)
   const [approvedSectionOpen, setApprovedSectionOpen] = useState(false)
@@ -297,45 +331,72 @@ function ReviewWorkspace({
   const findSection = (input: string) => parseSectionNotation(input, sections)
 
   // ── View-mode section nav ─────────────────────────────────────────────────
-  // Build sections from change types that have at least one change
+  // Sections: Unresolved (if any) → type groups that exist → Approved (if any)
+  const effectivelyApprovedFn = useCallback((ch: LiveChange) =>
+    isApproved(ch.id) && !isStale(ch.id, ch.updatedAt?.toMillis() ?? ch.createdAt?.toMillis() ?? 0, ch.updatedBy),
+    [isApproved, isStale])
+
   const viewSections = useMemo(() => {
-    const typeCounts: Record<string, number> = { all: changes.length }
+    const secs: { key: string; label: string }[] = []
+    const unresolvedCount = changes.filter(c => c.unresolved && !effectivelyApprovedFn(c)).length
+    if (unresolvedCount > 0) secs.push({ key: 'unresolved', label: `Unresolved` })
+    const byType = new Map<ChangeType, number>()
     for (const ch of changes) {
+      if (effectivelyApprovedFn(ch)) continue
       const dt = computeChangeType(ch.cardsOut, ch.cardsIn, ch.type)
-      typeCounts[dt] = (typeCounts[dt] ?? 0) + 1
+      byType.set(dt, (byType.get(dt) ?? 0) + 1)
     }
-    return VIEW_SECTIONS.filter(s => (typeCounts[s.value] ?? 0) > 0 || s.value === 'all')
-      .map(s => ({ ...s, count: typeCounts[s.value] ?? 0 }))
-  }, [changes])
+    for (const t of TYPE_ORDER) {
+      if ((byType.get(t) ?? 0) > 0) secs.push({ key: t, label: TYPE_LABELS[t] })
+    }
+    const approvedCount = changes.filter(c => effectivelyApprovedFn(c)).length
+    if (approvedCount > 0) secs.push({ key: 'approved', label: 'Approved' })
+    return secs
+  }, [changes, effectivelyApprovedFn])
 
   const [viewSectionIndex, setViewSectionIndex] = useState(0)
   const [viewSearchMatches, setViewSearchMatches] = useState<string[]>([])
   const [viewSearchMatchIndex, setViewSearchMatchIndex] = useState(0)
 
-  // Keep viewSectionIndex in sync with viewTypeFilter
-  useEffect(() => {
-    const idx = viewSections.findIndex(s => s.value === viewTypeFilter)
-    if (idx >= 0) setViewSectionIndex(idx)
-  }, [viewTypeFilter, viewSections])
+  const viewSectionLabel = viewSections[viewSectionIndex]?.label ?? ''
 
-  const viewSectionLabel = viewSections[viewSectionIndex]?.label ?? 'All'
+  function scrollToViewEl(selector: string) {
+    const el = document.querySelector(selector)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  function scrollToViewChange(id: string) {
+    setHighlightedChangeId(id)
+    const el = document.querySelector(`[data-change-id="${id}"]`)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
 
   function viewGoTo(index: number) {
     const clamped = Math.max(0, Math.min(index, viewSections.length - 1))
     setViewSectionIndex(clamped)
-    setViewTypeFilter(viewSections[clamped].value)
     setHighlightedChangeId(null)
+    const sec = viewSections[clamped]
+    if (!sec) return
+    if (sec.key === 'unresolved') {
+      // Scroll to first unresolved change
+      const first = changes.find(c => c.unresolved && !effectivelyApprovedFn(c))
+      if (first) scrollToViewChange(first.id)
+    } else if (sec.key === 'approved') {
+      setApprovedSectionOpen(true)
+      scrollToViewEl('#view-section-approved')
+    } else {
+      scrollToViewEl(`#view-section-${sec.key}`)
+    }
   }
 
   function viewGoNext() {
-    // If searching, advance to next match instead
     if (viewSearchMatches.length > 0) {
       const idx = (viewSearchMatchIndex + 1) % viewSearchMatches.length
       setViewSearchMatchIndex(idx)
       scrollToViewChange(viewSearchMatches[idx])
       return
     }
-    viewGoTo(viewSectionIndex + 1)
+    if (viewSectionIndex < viewSections.length - 1) viewGoTo(viewSectionIndex + 1)
   }
 
   function viewGoPrev() {
@@ -345,19 +406,16 @@ function ReviewWorkspace({
       scrollToViewChange(viewSearchMatches[idx])
       return
     }
-    viewGoTo(viewSectionIndex - 1)
+    if (viewSectionIndex > 0) viewGoTo(viewSectionIndex - 1)
   }
 
   function findViewSection(input: string): number {
     const q = input.trim().toLowerCase()
     if (!q) return -1
-    return viewSections.findIndex(s => s.label.toLowerCase().startsWith(q) || s.value === q)
-  }
-
-  function scrollToViewChange(id: string) {
-    setHighlightedChangeId(id)
-    const el = document.querySelector(`[data-change-id="${id}"]`)
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    // Match section labels: "unresolved", "swaps", "adds", etc.
+    return viewSections.findIndex(s =>
+      s.label.toLowerCase().startsWith(q) || s.key.startsWith(q)
+    )
   }
 
   function handleViewCardSearch(query: string) {
@@ -379,16 +437,6 @@ function ReviewWorkspace({
     if (matches.length > 0) {
       setViewSearchMatchIndex(0)
       scrollToViewChange(matches[0])
-      // Also switch to the type section that contains the first match
-      const firstMatch = changes.find(ch => ch.id === matches[0])
-      if (firstMatch) {
-        const matchType = computeChangeType(firstMatch.cardsOut, firstMatch.cardsIn, firstMatch.type)
-        const sIdx = viewSections.findIndex(s => s.value === matchType)
-        if (sIdx >= 0 && viewTypeFilter !== 'all' && viewTypeFilter !== matchType) {
-          setViewTypeFilter('all')
-          setViewSectionIndex(0)
-        }
-      }
     } else {
       setHighlightedChangeId(null)
     }
@@ -1155,7 +1203,6 @@ function ReviewWorkspace({
             changes={changes}
             identity={identity}
             reviewId={reviewId!}
-            viewTypeFilter={viewTypeFilter}
             highlightedChangeId={highlightedChangeId}
             approvedSectionOpen={approvedSectionOpen}
             setApprovedSectionOpen={setApprovedSectionOpen}
