@@ -114,7 +114,7 @@ function ViewModePanel({
   // Sort
   const myMention = `@${identity.displayName}`
   const hasMention = (c: LiveChange) =>
-    identity.displayName !== 'Reviewer' &&
+    !/^Reviewer\d*$/.test(identity.displayName) &&
     c.comments.some(cm => cm.body.toLowerCase().includes(myMention.toLowerCase()))
   const sorted = [...changes].sort((a, b) => {
     const aM = hasMention(a), bM = hasMention(b)
@@ -136,25 +136,52 @@ function ViewModePanel({
   const activeChanges = typeFiltered.filter(ch => !effectivelyApproved(ch))
   const approvedChanges = typeFiltered.filter(ch => effectivelyApproved(ch))
 
-  // Card search: scroll to matching change
+  // Card search: find all matching changes and cycle through them
+  const [searchMatches, setSearchMatches] = useState<string[]>([])
+  const [searchMatchIndex, setSearchMatchIndex] = useState(0)
+
+  function scrollToChange(id: string) {
+    setHighlightedChangeId(id)
+    const el = document.querySelector(`[data-change-id="${id}"]`)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
   function handleCardSearch(query: string) {
     setViewCardSearch(query)
     if (!query.trim()) {
+      setSearchMatches([])
+      setSearchMatchIndex(0)
       setHighlightedChangeId(null)
       return
     }
     const q = query.toLowerCase()
-    const match = changes.find(ch =>
-      ch.cardsIn.some(c => c.name.toLowerCase().includes(q)) ||
-      ch.cardsOut.some(c => c.name.toLowerCase().includes(q))
-    )
-    if (match) {
-      setHighlightedChangeId(match.id)
-      const el = document.querySelector(`[data-change-id="${match.id}"]`)
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      // Clear highlight after animation
-      setTimeout(() => setHighlightedChangeId(null), 2000)
+    const matches = changes
+      .filter(ch =>
+        ch.cardsIn.some(c => c.name.toLowerCase().includes(q)) ||
+        ch.cardsOut.some(c => c.name.toLowerCase().includes(q))
+      )
+      .map(ch => ch.id)
+    setSearchMatches(matches)
+    if (matches.length > 0) {
+      setSearchMatchIndex(0)
+      scrollToChange(matches[0])
+    } else {
+      setHighlightedChangeId(null)
     }
+  }
+
+  function searchPrev() {
+    if (searchMatches.length === 0) return
+    const idx = (searchMatchIndex - 1 + searchMatches.length) % searchMatches.length
+    setSearchMatchIndex(idx)
+    scrollToChange(searchMatches[idx])
+  }
+
+  function searchNext() {
+    if (searchMatches.length === 0) return
+    const idx = (searchMatchIndex + 1) % searchMatches.length
+    setSearchMatchIndex(idx)
+    scrollToChange(searchMatches[idx])
   }
 
   function renderChangeCard(change: LiveChange, approved: boolean) {
@@ -199,14 +226,42 @@ function ViewModePanel({
         })}
       </div>
 
-      {/* Card search */}
-      <input
-        type="text"
-        value={viewCardSearch}
-        onChange={e => handleCardSearch(e.target.value)}
-        placeholder="Search by card name…"
-        className="w-full bg-slate-700/60 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
-      />
+      {/* Card search with prev/next cycling */}
+      <div className="flex items-center gap-1">
+        <button
+          onClick={searchPrev}
+          disabled={searchMatches.length === 0}
+          className="flex items-center justify-center h-8 w-8 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-200 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 shrink-0"
+          aria-label="Previous match"
+          title="Previous match"
+        >
+          <span aria-hidden="true">←</span>
+        </button>
+        <input
+          type="text"
+          value={viewCardSearch}
+          onChange={e => handleCardSearch(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); searchNext() } }}
+          placeholder="Search by card name…"
+          className="flex-1 min-w-0 bg-slate-700/60 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
+        />
+        {viewCardSearch.trim() && (
+          <span className="text-xs text-slate-400 tabular-nums whitespace-nowrap shrink-0 w-10 text-center">
+            {searchMatches.length > 0
+              ? `${searchMatchIndex + 1}/${searchMatches.length}`
+              : '0/0'}
+          </span>
+        )}
+        <button
+          onClick={searchNext}
+          disabled={searchMatches.length === 0}
+          className="flex items-center justify-center h-8 w-8 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-200 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 shrink-0"
+          aria-label="Next match"
+          title="Next match"
+        >
+          <span aria-hidden="true">→</span>
+        </button>
+      </div>
 
       {/* Stats bar */}
       <div className="flex items-center gap-6 px-2 py-3 mb-1 border-b border-slate-700/60">
@@ -311,7 +366,7 @@ function ReviewWorkspace({
   const [copied, setCopied] = useState(false)
   const [copyPop, setCopyPop] = useState(false)
   const [nameInput, setNameInput] = useState(
-    identity.displayName === 'Reviewer' ? '' : identity.displayName
+    /^Reviewer\d*$/.test(identity.displayName) ? '' : identity.displayName
   )
   const [editingName, setEditingName] = useState(false)
 
@@ -882,8 +937,8 @@ function ReviewWorkspace({
   const reviewerNames = useMemo(() => [...new Set([
     ...changes.map(c => c.authorName).filter(Boolean),
     ...changes.flatMap(c => c.comments.map(cm => cm.authorName)).filter(Boolean),
-    ...(identity.displayName !== 'Reviewer' ? [identity.displayName] : []),
-  ])], [changes, identity.displayName])
+    ...(identity.displayName ? [identity.displayName] : []),
+  ])].filter(name => !/^Reviewer\d*$/.test(name)), [changes, identity.displayName])
 
   const cardInChanges = useMemo(() => {
     const s = new Set<string>()
@@ -1170,11 +1225,11 @@ function ReviewWorkspace({
         <Modal
           open={editingName}
           onClose={() => setEditingName(false)}
-          title={identity.displayName === 'Reviewer' ? 'Set your name' : 'Your name'}
+          title={/^Reviewer\d*$/.test(identity.displayName) ? 'Set your name' : 'Your name'}
         >
           <div className="space-y-4">
             <p className="text-sm text-slate-400">
-              {identity.displayName === 'Reviewer'
+              {/^Reviewer\d*$/.test(identity.displayName)
                 ? 'Your name lets others know who\'s making changes. It\'ll appear on your annotations and comments.'
                 : 'This is how you appear on changes and comments. Saving will update your existing annotations too.'}
             </p>

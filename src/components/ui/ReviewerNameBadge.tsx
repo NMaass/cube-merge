@@ -11,7 +11,7 @@ export const ReviewerNameBadge = memo(function ReviewerNameBadge({ className = '
   const [input, setInput] = useState('')
 
   function startEditing() {
-    setInput(identity.displayName === 'Reviewer' ? '' : identity.displayName)
+    setInput(/^Reviewer\d*$/.test(identity.displayName) ? '' : identity.displayName)
     setEditing(true)
   }
 
@@ -54,7 +54,7 @@ export const ReviewerNameBadge = memo(function ReviewerNameBadge({ className = '
     )
   }
 
-  const isDefault = identity.displayName === 'Reviewer'
+  const isDefault = /^Reviewer\d*$/.test(identity.displayName)
 
   return (
     <button

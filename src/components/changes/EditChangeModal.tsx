@@ -2,66 +2,15 @@ import { useState } from 'react'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { Textarea } from '../ui/Textarea'
+import { SuggestionMenu } from '../ui/SuggestionMenu'
+import { useAutocomplete } from '../../hooks/useAutocomplete'
 import { CubeCard } from '../../types/cube'
 import { Change, Comment, ChangeType } from '../../types/firestore'
 import { computeChangeType } from '../../lib/changes'
 import { ChangeTypeBadge } from './ChangeTypeBadge'
+import { CardSearch } from './CardSearch'
 
 type WorkingChange = Change & { comments: Comment[] }
-
-// Delay lets the onMouseDown on dropdown items fire before onBlur hides them
-const BLUR_DISMISS_DELAY_MS = 150
-
-interface CardSearchProps {
-  label: string
-  candidates: CubeCard[]
-  onAdd: (card: CubeCard) => void
-}
-
-function CardSearch({ label, candidates, onAdd }: CardSearchProps) {
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
-
-  const matches = query.length >= 1
-    ? candidates.filter(c => c.name.toLowerCase().includes(query.toLowerCase())).slice(0, 6)
-    : []
-
-  function select(card: CubeCard) {
-    onAdd(card)
-    setQuery('')
-    setOpen(false)
-  }
-
-  return (
-    <div className="relative">
-      <input
-        type="text"
-        value={query}
-        placeholder={`Add ${label}...`}
-        aria-label={`Search ${label}`}
-        onChange={e => { setQuery(e.target.value); setOpen(true) }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), BLUR_DISMISS_DELAY_MS)}
-        className="w-full bg-slate-700/60 border border-slate-600 rounded px-2 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
-      />
-      {open && matches.length > 0 && (
-        <div role="listbox" aria-label={`${label} suggestions`} className="absolute z-50 w-full mt-0.5 bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-hidden">
-          {matches.map(card => (
-            <button
-              key={card.name}
-              role="option"
-              aria-selected={false}
-              className="w-full text-left px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700 transition-colors"
-              onMouseDown={() => select(card)}
-            >
-              {card.name}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 interface EditChangeModalProps {
   open: boolean
@@ -72,13 +21,18 @@ interface EditChangeModalProps {
   onSave: (changeId: string, updates: { initialComment: string; cardsOut: CubeCard[]; cardsIn: CubeCard[]; type: ChangeType; unresolved: boolean }) => void
   onDelete?: (changeId: string) => void
   onSplit?: () => void
+  diffCards?: string[]
+  reviewerNames?: string[]
 }
 
-export function EditChangeModal({ open, onClose, change, allCardsA, allCardsB, onSave, onDelete, onSplit }: EditChangeModalProps) {
+export function EditChangeModal({ open, onClose, change, allCardsA, allCardsB, onSave, onDelete, onSplit, diffCards = [], reviewerNames = [] }: EditChangeModalProps) {
   const [comment, setComment] = useState(change.initialComment)
   const [cardsOut, setCardsOut] = useState<CubeCard[]>(change.cardsOut)
   const [cardsIn, setCardsIn] = useState<CubeCard[]>(change.cardsIn)
   const [unresolved, setUnresolved] = useState(change.unresolved ?? false)
+
+  const { textareaRef, suggestions, anchor, onTextareaChange, applySuggestion, dismiss } =
+    useAutocomplete({ diffCards, reviewerNames })
 
   const computedType = computeChangeType(cardsOut, cardsIn, change.type)
 
@@ -142,12 +96,24 @@ export function EditChangeModal({ open, onClose, change, allCardsA, allCardsB, o
           <CardSearch label="addition" candidates={availableB} onAdd={c => setCardsIn(prev => [...prev, c])} />
         </div>
 
-        <Textarea
-          placeholder="Note (optional)..."
-          value={comment}
-          onChange={e => setComment(e.target.value)}
-          rows={2}
-        />
+        <div className="relative">
+          <Textarea
+            ref={textareaRef}
+            placeholder="Add a note… / for cards, @ for names"
+            value={comment}
+            onChange={e => {
+              setComment(e.target.value)
+              onTextareaChange(e.target.value, e.target.selectionStart ?? e.target.value.length)
+            }}
+            onKeyDown={e => { if (e.key === 'Escape' && suggestions.length > 0) { e.stopPropagation(); dismiss() } }}
+            rows={2}
+          />
+          <SuggestionMenu
+            suggestions={suggestions}
+            anchor={anchor}
+            onSelect={s => applySuggestion(s, comment, setComment)}
+          />
+        </div>
 
         <label className="flex items-center gap-2 cursor-pointer select-none">
           <input

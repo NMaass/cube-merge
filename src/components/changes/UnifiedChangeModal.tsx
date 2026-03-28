@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { Textarea } from '../ui/Textarea'
@@ -9,6 +8,8 @@ import { ReviewerNameBadge } from '../ui/ReviewerNameBadge'
 import { ChangeTypeBadge } from './ChangeTypeBadge'
 import { getCachedImage } from '../../lib/imageCache'
 import { FullscreenCardModal } from '../cards/FullscreenCardModal'
+import { CardSearch } from './CardSearch'
+import { PreviewableCardRow } from './PreviewableCardRow'
 import { CubeCard } from '../../types/cube'
 import { Change, Comment, ChangeType } from '../../types/firestore'
 import { computeChangeType } from '../../lib/changes'
@@ -26,109 +27,7 @@ export interface ChangeData {
   changeId?: string
 }
 
-// Delay lets the onMouseDown on dropdown items fire before onBlur hides them
-const BLUR_DISMISS_DELAY_MS = 150
-
 // ── Inline sub-components ────────────────────────────────────────────────────
-
-function CardSearch({ label, candidates, onAdd }: {
-  label: string
-  candidates: CubeCard[]
-  onAdd: (card: CubeCard) => void
-}) {
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
-
-  const matches = query.length >= 1
-    ? candidates.filter(c => c.name.toLowerCase().includes(query.toLowerCase())).slice(0, 6)
-    : []
-
-  function select(card: CubeCard) {
-    onAdd(card)
-    setQuery('')
-    setOpen(false)
-  }
-
-  return (
-    <div className="relative">
-      <input
-        type="text"
-        value={query}
-        placeholder={`Add ${label}...`}
-        aria-label={`Search ${label}`}
-        onChange={e => { setQuery(e.target.value); setOpen(true) }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), BLUR_DISMISS_DELAY_MS)}
-        className="w-full bg-slate-700/60 border border-slate-600 rounded px-2 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
-      />
-      {open && matches.length > 0 && (
-        <div role="listbox" aria-label={`${label} suggestions`} className="absolute z-50 w-full mt-0.5 bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-hidden">
-          {matches.map(card => (
-            <button
-              key={card.name}
-              role="option"
-              aria-selected={false}
-              className="w-full text-left px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700 transition-colors"
-              onMouseDown={() => select(card)}
-            >
-              {card.name}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function PreviewableCardRow({ card, colorClass, prefix, onPreview }: {
-  card: CubeCard
-  colorClass: string
-  prefix: string
-  onPreview: (card: CubeCard) => void
-}) {
-  const [hoverPos, setHoverPos] = useState<{ top: number; left: number } | null>(null)
-  const imageUrl = getCachedImage(card.name)
-
-  function handleMouseMove(e: React.MouseEvent) {
-    if (!imageUrl) return
-    const imgW = 180, imgH = 252
-    let left = e.clientX + 20
-    let top = e.clientY - imgH / 2
-    if (left + imgW > window.innerWidth - 8) left = e.clientX - imgW - 20
-    if (top < 8) top = 8
-    if (top + imgH > window.innerHeight - 8) top = window.innerHeight - imgH - 8
-    setHoverPos({ top, left })
-  }
-
-  return (
-    <>
-      <button
-        type="button"
-        className={`w-full text-left text-sm py-1 select-none ${imageUrl ? 'cursor-pointer hover:opacity-80 active:opacity-60' : 'cursor-default'} ${colorClass} focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500 rounded`}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={() => setHoverPos(null)}
-        onClick={() => imageUrl && onPreview(card)}
-        aria-label={imageUrl ? `Preview ${card.name}` : card.name}
-      >
-        {prefix} {card.name}
-      </button>
-      {hoverPos && imageUrl && createPortal(
-        <div
-          className="hidden md:block pointer-events-none"
-          style={{ position: 'fixed', top: hoverPos.top, left: hoverPos.left, zIndex: 9999 }}
-        >
-          <img
-            src={imageUrl}
-            alt={card.name}
-            className="rounded-lg shadow-2xl border border-slate-600/50"
-            style={{ width: 180 }}
-          />
-        </div>,
-        document.body
-      )}
-    </>
-  )
-}
 
 function EditableCardRow({ card, colorClass, onRemove }: {
   card: CubeCard
@@ -149,16 +48,16 @@ function EditableCardRow({ card, colorClass, onRemove }: {
   )
 }
 
-// ── Swap icon ────────────────────────────────────────────────────────────────
+// ── Flip icon ───────────────────────────────────────────────────────────────
 
-function SwapButton({ onClick, label }: { onClick: () => void; label?: string }) {
+function FlipButton({ onClick, label }: { onClick: () => void; label: string }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-slate-700/60 hover:bg-slate-600 text-slate-400 hover:text-white transition-colors"
-      aria-label={label ?? 'Swap sides'}
-      title={label ?? 'Swap sides'}
+      aria-label={label}
+      title={label}
     >
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
@@ -260,7 +159,6 @@ export function UnifiedChangeModal({
   }, [open])
 
   // ── Derived state ────────────────────────────────────────────────────────
-  const isAnchored = baseType === 'keep' || baseType === 'reject'
   const computedType = computeChangeType(cardsOut, cardsIn, baseType)
 
   // Filter out already-added cards from candidates (edit mode)
@@ -270,15 +168,22 @@ export function UnifiedChangeModal({
   const availableB = allCardsB.filter(c => !inNames.has(c.name))
 
   // ── Handlers ─────────────────────────────────────────────────────────────
-  function handleSwapSides() {
-    const newOut = [...cardsIn]
-    const newIn = [...cardsOut]
-    setCardsOut(newOut)
-    setCardsIn(newIn)
-    if (baseType === 'keep') setBaseType('reject')
-    else if (baseType === 'reject') setBaseType('keep')
-    // Standard types: just swap arrays, computedType handles the rest
+  const flipMap: Partial<Record<ChangeType, ChangeType>> = {
+    remove: 'keep', keep: 'remove',
+    add: 'reject', reject: 'add',
   }
+
+  function handleFlip() {
+    const next = flipMap[baseType]
+    if (next) setBaseType(next)
+  }
+
+  const canFlip = baseType !== 'swap'
+  const flipLabel = baseType === 'remove' ? 'Flip to Keep'
+    : baseType === 'keep' ? 'Flip to Remove'
+    : baseType === 'add' ? 'Flip to Reject'
+    : baseType === 'reject' ? 'Flip to Add'
+    : ''
 
   function handleSave() {
     onSave({
@@ -313,65 +218,21 @@ export function UnifiedChangeModal({
   return (
     <Modal open={open} onClose={onClose} title={title}>
       <div className={`space-y-4 ${accentBorder ? `pl-3 ${accentBorder}` : ''}`}>
-        {/* Type indicator */}
+        {/* Type indicator + flip button */}
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-500">Type:</span>
           <ChangeTypeBadge type={computedType} />
-          {isAnchored && (
-            <SwapButton
-              onClick={handleSwapSides}
-              label={baseType === 'keep' ? 'Switch to Reject' : 'Switch to Keep'}
-            />
+          {canFlip && (
+            <FlipButton onClick={handleFlip} label={flipLabel} />
           )}
         </div>
 
         {/* ── Card lists ──────────────────────────────────────────────────── */}
-        {isAnchored ? (
-          // Keep or Reject: show only the relevant list
-          <div className="space-y-1.5">
-            <div className="text-xs font-medium text-slate-400 uppercase tracking-wide">
-              {baseType === 'keep' ? 'Keep' : 'Reject'}
-            </div>
-            <div className="bg-slate-700/50 rounded-lg p-3 space-y-0.5">
-              {baseType === 'keep'
-                ? cardsOut.map(c =>
-                    isEditing ? (
-                      <EditableCardRow key={c.name} card={c} colorClass="text-teal-400"
-                        onRemove={() => setCardsOut(prev => prev.filter(x => x.name !== c.name))} />
-                    ) : (
-                      <PreviewableCardRow key={c.name} card={c} colorClass="text-teal-300" prefix="↺" onPreview={setPreviewCard} />
-                    )
-                  )
-                : cardsIn.map(c =>
-                    isEditing ? (
-                      <EditableCardRow key={c.name} card={c} colorClass="text-orange-400"
-                        onRemove={() => setCardsIn(prev => prev.filter(x => x.name !== c.name))} />
-                    ) : (
-                      <PreviewableCardRow key={c.name} card={c} colorClass="text-orange-300" prefix="×" onPreview={setPreviewCard} />
-                    )
-                  )
-              }
-            </div>
-            {/* CardSearch for adding more (edit mode only) */}
-            {isEditing && (
-              <CardSearch
-                label={baseType === 'keep' ? 'card to keep' : 'card to reject'}
-                candidates={baseType === 'keep' ? availableA : availableB}
-                onAdd={c => baseType === 'keep'
-                  ? setCardsOut(prev => [...prev, c])
-                  : setCardsIn(prev => [...prev, c])
-                }
-              />
-            )}
-          </div>
-        ) : (
-          // Standard types: show both sides
+        {computedType === 'swap' ? (
+          // Swap: show both sides without flip
           <>
-            {/* Cards Out (removing side) */}
             <div className="space-y-1.5">
-              <div className="text-xs font-medium text-slate-400 uppercase tracking-wide">
-                Removing
-              </div>
+              <div className="text-xs font-medium text-slate-400 uppercase tracking-wide">Removing</div>
               {isEditing ? (
                 <>
                   <div className="space-y-1">
@@ -391,19 +252,8 @@ export function UnifiedChangeModal({
                 </div>
               )}
             </div>
-
-            {/* Swap button between sections */}
-            {(cardsOut.length > 0 || cardsIn.length > 0) && (
-              <div className="flex justify-center">
-                <SwapButton onClick={handleSwapSides} />
-              </div>
-            )}
-
-            {/* Cards In (adding side) */}
             <div className="space-y-1.5">
-              <div className="text-xs font-medium text-slate-400 uppercase tracking-wide">
-                Adding
-              </div>
+              <div className="text-xs font-medium text-slate-400 uppercase tracking-wide">Adding</div>
               {isEditing ? (
                 <>
                   <div className="space-y-1">
@@ -424,13 +274,69 @@ export function UnifiedChangeModal({
               )}
             </div>
           </>
+        ) : (baseType === 'remove' || baseType === 'keep') ? (
+          // Cards are in cardsOut — label/color depends on type
+          <div className="space-y-1.5">
+            <div className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+              {baseType === 'keep' ? 'Keeping' : 'Removing'}
+            </div>
+            {isEditing ? (
+              <>
+                <div className="space-y-1">
+                  {cardsOut.map(c => (
+                    <EditableCardRow key={c.name} card={c} colorClass={baseType === 'keep' ? 'text-teal-400' : 'text-red-400'}
+                      onRemove={() => setCardsOut(prev => prev.filter(x => x.name !== c.name))} />
+                  ))}
+                </div>
+                <CardSearch label={baseType === 'keep' ? 'card to keep' : 'removal'} candidates={availableA} onAdd={c => setCardsOut(prev => [...prev, c])} />
+              </>
+            ) : (
+              <div className="bg-slate-700/50 rounded-lg p-3 space-y-0.5">
+                {cardsOut.map(c => (
+                  <PreviewableCardRow key={c.name} card={c}
+                    colorClass={baseType === 'keep' ? 'text-teal-300' : 'text-red-300'}
+                    prefix={baseType === 'keep' ? '↺' : '−'}
+                    onPreview={setPreviewCard} />
+                ))}
+                {cardsOut.length === 0 && <p className="text-xs text-slate-500 italic">None</p>}
+              </div>
+            )}
+          </div>
+        ) : (
+          // add or reject — cards are in cardsIn
+          <div className="space-y-1.5">
+            <div className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+              {baseType === 'reject' ? 'Rejecting' : 'Adding'}
+            </div>
+            {isEditing ? (
+              <>
+                <div className="space-y-1">
+                  {cardsIn.map(c => (
+                    <EditableCardRow key={c.name} card={c} colorClass={baseType === 'reject' ? 'text-orange-400' : 'text-green-400'}
+                      onRemove={() => setCardsIn(prev => prev.filter(x => x.name !== c.name))} />
+                  ))}
+                </div>
+                <CardSearch label={baseType === 'reject' ? 'card to reject' : 'addition'} candidates={availableB} onAdd={c => setCardsIn(prev => [...prev, c])} />
+              </>
+            ) : (
+              <div className="bg-slate-700/50 rounded-lg p-3 space-y-0.5">
+                {cardsIn.map(c => (
+                  <PreviewableCardRow key={c.name} card={c}
+                    colorClass={baseType === 'reject' ? 'text-orange-300' : 'text-green-300'}
+                    prefix={baseType === 'reject' ? '×' : '+'}
+                    onPreview={setPreviewCard} />
+                ))}
+                {cardsIn.length === 0 && <p className="text-xs text-slate-500 italic">None</p>}
+              </div>
+            )}
+          </div>
         )}
 
         {/* ── Comment ─────────────────────────────────────────────────────── */}
         <div className="relative">
           <Textarea
             ref={textareaRef}
-            placeholder="Add a note… type / to search cards"
+            placeholder="Add a note… / for cards, @ for names"
             value={comment}
             onChange={e => {
               setComment(e.target.value)

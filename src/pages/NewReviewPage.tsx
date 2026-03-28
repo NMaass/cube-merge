@@ -74,7 +74,7 @@ export function ReviewWorkspace({
   const [copyModalOpen, setCopyModalOpen] = useState(false)
   const [copyTab, setCopyTab] = useState<'summary' | 'cubecobra'>('summary')
   const [copied, setCopied] = useState(false)
-  const [nameInput, setNameInput] = useState(identity.displayName === 'Reviewer' ? '' : identity.displayName)
+  const [nameInput, setNameInput] = useState(/^Reviewer\d*$/.test(identity.displayName) ? '' : identity.displayName)
   const [editingName, setEditingName] = useState(false)
 
   const sections = useMemo(() => groupBySection(diffData.onlyA, diffData.onlyB), [diffData])
@@ -521,7 +521,7 @@ export function ReviewWorkspace({
               const net = totalIn - totalOut
               const myMention = `@${identity.displayName}`
               const hasMention = (c: WorkingChange) =>
-                identity.displayName !== 'Reviewer' &&
+                !/^Reviewer\d*$/.test(identity.displayName) &&
                 c.comments.some(cm => cm.body.includes(myMention))
               const sorted = [...changes].sort((a, b) => {
                 const aM = hasMention(a), bM = hasMention(b)
@@ -535,7 +535,7 @@ export function ReviewWorkspace({
                 ...diffData.onlyA.map(c => c.name),
                 ...diffData.onlyB.map(c => c.name),
               ]
-              const reviewerNames = [...new Set(changes.map(c => c.authorName).filter(Boolean))]
+              const reviewerNames = [...new Set(changes.map(c => c.authorName).filter(Boolean))].filter(name => !/^Reviewer\d*$/.test(name))
               return (
                 <>
                   <div className="flex items-center gap-6 px-2 py-3 mb-1 border-b border-slate-700/60">

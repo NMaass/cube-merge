@@ -5,6 +5,7 @@ import { Badge } from '../ui/Badge'
 import { ChangeTypeBadge } from './ChangeTypeBadge'
 import { CardInOutDisplay } from './CardInOutDisplay'
 import { CommentThread } from './CommentThread'
+import { RichText } from '../ui/RichText'
 
 interface ChangeCardProps {
   change: Change & { comments: Comment[] }
@@ -93,7 +94,9 @@ export function ChangeCard({ change, onAddComment, onSetCommentResolution, onEdi
 
       {/* Initial comment — plain note under the cards */}
       {change.initialComment && (
-        <p className="mt-2.5 pl-1 text-sm text-slate-400 leading-snug">{change.initialComment}</p>
+        <div className="mt-2.5 pl-1">
+          <RichText body={change.initialComment} className="text-sm text-slate-400 leading-snug whitespace-pre-wrap" />
+        </div>
       )}
 
       {/* Footer: compact chip on desktop, larger comment action on mobile */}
