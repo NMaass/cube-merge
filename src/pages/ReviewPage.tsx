@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams, Link } from '../lib/router'
 import { getCachedReview, setCachedReview } from '../lib/reviewCache'
 import { Helmet } from 'react-helmet-async'
@@ -23,7 +23,8 @@ import { ChangeCard } from '../components/changes/ChangeCard'
 import { useCardImages } from '../hooks/useCardImages'
 import { useSectionNav } from '../hooks/useSectionNav'
 import { useApprovedChanges } from '../hooks/useApprovedChanges'
-import { groupBySection, sectionLabel, parseSectionNotation } from '../lib/sorting'
+import { groupBySection, sectionLabel, parseSectionNotation, COLOR_ORDER, COLOR_NAMES, COLOR_BG } from '../lib/sorting'
+import { ColorCategory } from '../types/cube'
 import { computeChangeType } from '../lib/changes'
 import { recordCubeCards } from '../lib/cubeCards'
 import { CubeCard } from '../types/cube'
@@ -58,6 +59,7 @@ function ViewModePanel({
   onApprove, onUnapprove,
   onAddComment, onSetCommentResolution, onEditComment, onEdit,
   allDiffCards, reviewerNames,
+  onOpenColorBreakdown,
 }: {
   changes: LiveChange[]
   identity: { id: string; displayName: string }
@@ -75,6 +77,7 @@ function ViewModePanel({
   onEdit: (ch: LiveChange) => void
   allDiffCards: string[]
   reviewerNames: string[]
+  onOpenColorBreakdown: () => void
 }) {
   if (changes.length === 0) {
     return (
@@ -154,26 +157,35 @@ function ViewModePanel({
     )
   }
 
-  const unresolvedCount = changes.filter(c => c.unresolved && !effectivelyApproved(c)).length
-
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-3">
       {/* Stats bar */}
       <div className="flex items-center gap-6 px-2 py-3 mb-1 border-b border-slate-700/60">
-        <div className="text-center">
-          <div className="text-xl font-bold text-green-400 leading-none">+{totalIn}</div>
-          <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">in</div>
-        </div>
-        <div className="text-center">
-          <div className="text-xl font-bold text-red-400 leading-none">−{totalOut}</div>
-          <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">out</div>
-        </div>
-        <div className="text-center">
-          <div className={`text-xl font-bold leading-none ${net >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-            {net >= 0 ? '+' : ''}{net}
+        <button
+          onClick={onOpenColorBreakdown}
+          className="flex items-center gap-6 group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded-lg px-2 py-1 -mx-2 -my-1 hover:bg-slate-700/40 transition-colors"
+          title="View color breakdown"
+        >
+          <div className="text-center">
+            <div className="text-xl font-bold text-green-400 leading-none">+{totalIn}</div>
+            <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">in</div>
           </div>
-          <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">net</div>
-        </div>
+          <div className="text-center">
+            <div className="text-xl font-bold text-red-400 leading-none">−{totalOut}</div>
+            <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">out</div>
+          </div>
+          <div className="text-center">
+            <div className={`text-xl font-bold leading-none ${net >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+              {net >= 0 ? '+' : ''}{net}
+            </div>
+            <div className="text-[10px] text-slate-500 group-hover:text-slate-400 uppercase tracking-wider mt-0.5 transition-colors flex items-center justify-center gap-0.5">
+              net
+              <svg className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </div>
+        </button>
         <Link
           to={`/c/${reviewId}/changelog`}
           className="text-center ml-auto group"
@@ -188,9 +200,6 @@ function ViewModePanel({
           </div>
         </Link>
       </div>
-
-      {/* Unresolved anchor (invisible, for scroll targeting) */}
-      {unresolvedCount > 0 && <div id="view-section-unresolved" />}
 
       {/* Type-grouped changes with headers */}
       {grouped.map(g => {
@@ -281,7 +290,8 @@ function ReviewWorkspace({
   const [linkCopied, setLinkCopied] = useState(false)
   const [linkCopyPop, setLinkCopyPop] = useState(false)
   const [copyModalOpen, setCopyModalOpen] = useState(false)
-  const [copyTab, setCopyTab] = useState<'summary' | 'cubecobra'>('summary')
+  const [copyTab, setCopyTab] = useState<'summary' | 'cubecobra' | 'proxxied'>('summary')
+  const [colorBreakdownOpen, setColorBreakdownOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [copyPop, setCopyPop] = useState(false)
   const [nameInput, setNameInput] = useState(
@@ -341,8 +351,6 @@ function ReviewWorkspace({
 
   const viewSections = useMemo(() => {
     const secs: { key: string; label: string }[] = []
-    const unresolvedCount = changes.filter(c => c.unresolved && !effectivelyApprovedFn(c)).length
-    if (unresolvedCount > 0) secs.push({ key: 'unresolved', label: `Unresolved` })
     const byType = new Map<ChangeType, number>()
     for (const ch of changes) {
       if (effectivelyApprovedFn(ch)) continue
@@ -380,11 +388,7 @@ function ReviewWorkspace({
     setHighlightedChangeId(null)
     const sec = viewSections[clamped]
     if (!sec) return
-    if (sec.key === 'unresolved') {
-      // Scroll to first unresolved change
-      const first = changes.find(c => c.unresolved && !effectivelyApprovedFn(c))
-      if (first) scrollToViewChange(first.id)
-    } else if (sec.key === 'approved') {
+    if (sec.key === 'approved') {
       setApprovedSectionOpen(true)
       scrollToViewEl('#view-section-approved')
     } else {
@@ -409,7 +413,12 @@ function ReviewWorkspace({
       scrollToViewChange(viewSearchMatches[idx])
       return
     }
-    if (viewSectionIndex > 0) viewGoTo(viewSectionIndex - 1)
+    if (viewSectionIndex > 0) {
+      viewGoTo(viewSectionIndex - 1)
+    } else {
+      // Already at first section — scroll to top of page
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   }
 
   function findViewSection(input: string): number {
@@ -954,8 +963,50 @@ function ReviewWorkspace({
     return parts.join('\n\n')
   }
 
+  function buildProxxiedText(): string {
+    const cards: string[] = []
+    for (const ch of changes) {
+      const dt = computeChangeType(ch.cardsOut, ch.cardsIn, ch.type)
+      if (dt === 'add' || dt === 'swap') ch.cardsIn.forEach(c => cards.push(`1 ${c.name}`))
+    }
+    return cards.join('\n')
+  }
+
+  // Color breakdown: count cards in/out by color category
+  const colorBreakdown = useMemo(() => {
+    const inByColor = new Map<ColorCategory, string[]>()
+    const outByColor = new Map<ColorCategory, string[]>()
+    for (const ch of changes) {
+      const dt = computeChangeType(ch.cardsOut, ch.cardsIn, ch.type)
+      if (dt === 'add' || dt === 'swap') {
+        for (const c of ch.cardsIn) {
+          const color = c.colorCategory
+          if (!inByColor.has(color)) inByColor.set(color, [])
+          inByColor.get(color)!.push(c.name)
+        }
+      }
+      if (dt === 'remove' || dt === 'swap') {
+        for (const c of ch.cardsOut) {
+          const color = c.colorCategory
+          if (!outByColor.has(color)) outByColor.set(color, [])
+          outByColor.get(color)!.push(c.name)
+        }
+      }
+    }
+    return COLOR_ORDER
+      .map(color => ({
+        color,
+        name: COLOR_NAMES[color],
+        bg: COLOR_BG[color],
+        added: inByColor.get(color) ?? [],
+        removed: outByColor.get(color) ?? [],
+        net: (inByColor.get(color)?.length ?? 0) - (outByColor.get(color)?.length ?? 0),
+      }))
+      .filter(r => r.added.length > 0 || r.removed.length > 0)
+  }, [changes])
+
   function handleCopyExport() {
-    const text = copyTab === 'summary' ? buildSummaryText() : buildCubeCobraText()
+    const text = copyTab === 'summary' ? buildSummaryText() : copyTab === 'cubecobra' ? buildCubeCobraText() : buildProxxiedText()
     navigator.clipboard.writeText(text).then(() => triggerCopyPop(setCopied, setCopyPop))
   }
 
@@ -1225,6 +1276,7 @@ function ReviewWorkspace({
             onEdit={(ch) => setEditingChange(ch)}
             allDiffCards={allDiffCards}
             reviewerNames={reviewerNames}
+            onOpenColorBreakdown={() => setColorBreakdownOpen(true)}
           />
         )}
 
@@ -1303,27 +1355,99 @@ function ReviewWorkspace({
         <Modal open={copyModalOpen} onClose={() => setCopyModalOpen(false)} title="Export Changes">
           <div className="space-y-3">
             <div className="flex gap-1 bg-slate-700/40 rounded-lg p-1">
-              {(['summary', 'cubecobra'] as const).map(tab => (
+              {(['summary', 'cubecobra', 'proxxied'] as const).map(tab => (
                 <button
                   key={tab}
                   onClick={() => { setCopyTab(tab); setCopied(false) }}
                   className={`flex-1 text-sm py-1 rounded-md transition-colors ${copyTab === tab ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
                 >
-                  {tab === 'summary' ? 'Summary' : 'CubeCobra'}
+                  {tab === 'summary' ? 'Summary' : tab === 'cubecobra' ? 'CubeCobra' : 'Proxxied'}
                 </button>
               ))}
             </div>
+            {copyTab === 'proxxied' && (
+              <p className="text-xs text-slate-500">
+                Copy this list and paste it into{' '}
+                <a href="https://proxxied.com" target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:text-amber-300 underline underline-offset-2 transition-colors">
+                  proxxied.com
+                </a>
+                {' '}to print proxies of new cards.
+              </p>
+            )}
             <textarea
               readOnly
-              aria-label={`${copyTab === 'summary' ? 'Summary' : 'CubeCobra'} export text`}
-              value={copyTab === 'summary' ? buildSummaryText() : buildCubeCobraText()}
+              aria-label={`${copyTab === 'summary' ? 'Summary' : copyTab === 'cubecobra' ? 'CubeCobra' : 'Proxxied'} export text`}
+              value={copyTab === 'summary' ? buildSummaryText() : copyTab === 'cubecobra' ? buildCubeCobraText() : buildProxxiedText()}
               className="w-full h-64 bg-slate-900 text-slate-200 text-xs font-mono rounded-lg p-3 resize-none border border-slate-700 focus:outline-none"
             />
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => { setCopyModalOpen(false); setColorBreakdownOpen(true) }}
+                className="text-xs text-slate-500 hover:text-slate-300 transition-colors underline underline-offset-2"
+              >
+                View color breakdown
+              </button>
               <Button size="sm" variant="primary" onClick={handleCopyExport} className={copyPop ? 'copy-pop' : ''}>
                 {copied ? '✓ Copied!' : 'Copy to clipboard'}
               </Button>
             </div>
+          </div>
+        </Modal>
+
+        {/* Color breakdown modal */}
+        <Modal open={colorBreakdownOpen} onClose={() => setColorBreakdownOpen(false)} title="Color Breakdown">
+          <div className="space-y-2">
+            {colorBreakdown.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-4">No card changes to break down</p>
+            ) : (
+              <>
+                <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-x-3 gap-y-1.5 text-sm items-center">
+                  {/* Header */}
+                  <div className="text-[10px] text-slate-600 uppercase tracking-wider col-span-2" />
+                  <div className="text-[10px] text-slate-600 uppercase tracking-wider text-right">In</div>
+                  <div className="text-[10px] text-slate-600 uppercase tracking-wider text-right">Out</div>
+                  <div className="text-[10px] text-slate-600 uppercase tracking-wider text-right">Net</div>
+                  {colorBreakdown.map(row => (
+                    <Fragment key={row.color}>
+                      <div
+                        className="w-3 h-3 rounded-sm shrink-0"
+                        style={{ backgroundColor: row.bg }}
+                        title={row.name}
+                      />
+                      <div className="text-slate-300 font-medium">{row.name}</div>
+                      <div className="text-green-400 text-right tabular-nums font-mono text-xs">
+                        {row.added.length > 0 ? `+${row.added.length}` : ''}
+                      </div>
+                      <div className="text-red-400 text-right tabular-nums font-mono text-xs">
+                        {row.removed.length > 0 ? `−${row.removed.length}` : ''}
+                      </div>
+                      <div className={`text-right tabular-nums font-mono text-xs font-semibold ${row.net > 0 ? 'text-green-300' : row.net < 0 ? 'text-red-300' : 'text-slate-600'}`}>
+                        {row.net !== 0 ? (row.net > 0 ? `+${row.net}` : `${row.net}`) : '—'}
+                      </div>
+                    </Fragment>
+                  ))}
+                </div>
+                {/* Card names detail */}
+                <details className="mt-3">
+                  <summary className="cursor-pointer text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                    Show card names
+                  </summary>
+                  <div className="mt-2 space-y-2 text-xs">
+                    {colorBreakdown.map(row => (
+                      <div key={row.color}>
+                        <div className="font-medium text-slate-400 mb-0.5" style={{ color: row.bg }}>{row.name}</div>
+                        {row.added.length > 0 && (
+                          <div className="text-green-400/80 ml-2">{row.added.map(n => `+ ${n}`).join(', ')}</div>
+                        )}
+                        {row.removed.length > 0 && (
+                          <div className="text-red-400/80 ml-2">{row.removed.map(n => `− ${n}`).join(', ')}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              </>
+            )}
           </div>
         </Modal>
 
