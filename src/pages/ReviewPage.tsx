@@ -41,14 +41,6 @@ const TYPE_ORDER: ChangeType[] = ['swap', 'add', 'remove', 'keep', 'reject']
 const TYPE_LABELS: Record<ChangeType, string> = {
   swap: 'Swaps', add: 'Adds', remove: 'Removes', keep: 'Keeps', reject: 'Rejects',
 }
-const TYPE_HEADER_COLORS: Record<ChangeType, string> = {
-  swap: 'text-amber-400', add: 'text-green-400', remove: 'text-red-400',
-  keep: 'text-teal-400', reject: 'text-orange-400',
-}
-const TYPE_SYMBOLS: Record<ChangeType, string> = {
-  swap: '⇄', add: '+', remove: '−', keep: '↺', reject: '×',
-}
-
 // ── View mode panel ──────────────────────────────────────────────────────────
 
 function ViewModePanel({
@@ -158,24 +150,24 @@ function ViewModePanel({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-3">
+    <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2 sm:space-y-3">
       {/* Stats bar */}
-      <div className="flex items-center gap-6 px-2 py-3 mb-1 border-b border-slate-700/60">
+      <div className="flex items-center gap-4 sm:gap-6 px-1 sm:px-2 py-2 sm:py-3 mb-1 border-b border-slate-700/60">
         <button
           onClick={onOpenColorBreakdown}
           className="flex items-center gap-6 group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded-lg px-2 py-1 -mx-2 -my-1 hover:bg-slate-700/40 transition-colors"
           title="View color breakdown"
         >
           <div className="text-center">
-            <div className="text-xl font-bold text-green-400 leading-none">+{totalIn}</div>
+            <div className="text-lg sm:text-xl font-bold text-green-400 leading-none">+{totalIn}</div>
             <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">in</div>
           </div>
           <div className="text-center">
-            <div className="text-xl font-bold text-red-400 leading-none">−{totalOut}</div>
+            <div className="text-lg sm:text-xl font-bold text-red-400 leading-none">−{totalOut}</div>
             <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">out</div>
           </div>
           <div className="text-center">
-            <div className={`text-xl font-bold leading-none ${net >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+            <div className={`text-lg sm:text-xl font-bold leading-none ${net >= 0 ? 'text-green-300' : 'text-red-300'}`}>
               {net >= 0 ? '+' : ''}{net}
             </div>
             <div className="text-[10px] text-slate-500 group-hover:text-slate-400 uppercase tracking-wider mt-0.5 transition-colors flex items-center justify-center gap-0.5">
@@ -201,29 +193,12 @@ function ViewModePanel({
         </Link>
       </div>
 
-      {/* Type-grouped changes with headers */}
-      {grouped.map(g => {
-        const groupUnresolved = g.changes.filter(c => c.unresolved).length
-        return (
-          <div key={g.type}>
-            <div
-              id={`view-section-${g.type}`}
-              className="flex items-center gap-2 pt-2 pb-1.5"
-            >
-              <span className={`text-xs font-semibold uppercase tracking-wider ${TYPE_HEADER_COLORS[g.type]}`}>
-                <span aria-hidden="true">{TYPE_SYMBOLS[g.type]} </span>{g.label}
-              </span>
-              <span className="text-xs text-slate-600">{g.changes.length}</span>
-              {groupUnresolved > 0 && (
-                <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 shrink-0" title={`${groupUnresolved} unresolved`} />
-              )}
-            </div>
-            <div className="space-y-3">
-              {g.changes.map(ch => renderChangeCard(ch, false))}
-            </div>
+      {/* Changes grouped by type (scroll targets for nav, no visible headers) */}
+      {grouped.map(g => (
+          <div key={g.type} id={`view-section-${g.type}`} className="space-y-2">
+            {g.changes.map(ch => renderChangeCard(ch, false))}
           </div>
-        )
-      })}
+      ))}
 
       {/* Approved disclosure group */}
       {approvedChanges.length > 0 && (
@@ -457,6 +432,21 @@ function ReviewWorkspace({
   const viewSearchMatchInfo = viewSearchMatches.length > 0
     ? `${viewSearchMatchIndex + 1}/${viewSearchMatches.length}`
     : viewCardSearch.trim() ? '0/0' : undefined
+
+  // Check if sections ahead of the current one have unresolved changes
+  const viewHasItemsAhead = useMemo(() => {
+    if (viewSections.length === 0 || viewSectionIndex >= viewSections.length - 1) return false
+    for (let i = viewSectionIndex + 1; i < viewSections.length; i++) {
+      const sectionKey = viewSections[i].key
+      if (sectionKey === 'approved') continue
+      const sectionChanges = changes.filter(ch => {
+        const dt = computeChangeType(ch.cardsOut, ch.cardsIn, ch.type)
+        return dt === sectionKey
+      })
+      if (sectionChanges.some(ch => ch.unresolved)) return true
+    }
+    return false
+  }, [viewSections, viewSectionIndex, changes])
 
   // Subscribe to changes subcollection
   useEffect(() => {
@@ -972,37 +962,76 @@ function ReviewWorkspace({
     return cards.join('\n')
   }
 
-  // Color breakdown: count cards in/out by color category
-  const colorBreakdown = useMemo(() => {
-    const inByColor = new Map<ColorCategory, string[]>()
-    const outByColor = new Map<ColorCategory, string[]>()
+  // Color breakdown: count cards in/out by color category, with multicolor sub-groups
+  type ColorRow = { key: string; name: string; bg: string; added: string[]; removed: string[]; net: number; indent?: boolean }
+  const colorBreakdown = useMemo((): ColorRow[] => {
+    const inByColor = new Map<string, string[]>()
+    const outByColor = new Map<string, string[]>()
+
+    function colorKey(card: CubeCard): string {
+      if (card.colorCategory === 'M' && card.colors.length > 1) {
+        return 'M:' + [...card.colors].sort().join('')
+      }
+      return card.colorCategory
+    }
+
     for (const ch of changes) {
       const dt = computeChangeType(ch.cardsOut, ch.cardsIn, ch.type)
       if (dt === 'add' || dt === 'swap') {
         for (const c of ch.cardsIn) {
-          const color = c.colorCategory
-          if (!inByColor.has(color)) inByColor.set(color, [])
-          inByColor.get(color)!.push(c.name)
+          const k = colorKey(c)
+          if (!inByColor.has(k)) inByColor.set(k, [])
+          inByColor.get(k)!.push(c.name)
         }
       }
       if (dt === 'remove' || dt === 'swap') {
         for (const c of ch.cardsOut) {
-          const color = c.colorCategory
-          if (!outByColor.has(color)) outByColor.set(color, [])
-          outByColor.get(color)!.push(c.name)
+          const k = colorKey(c)
+          if (!outByColor.has(k)) outByColor.set(k, [])
+          outByColor.get(k)!.push(c.name)
         }
       }
     }
-    return COLOR_ORDER
-      .map(color => ({
-        color,
-        name: COLOR_NAMES[color],
-        bg: COLOR_BG[color],
-        added: inByColor.get(color) ?? [],
-        removed: outByColor.get(color) ?? [],
-        net: (inByColor.get(color)?.length ?? 0) - (outByColor.get(color)?.length ?? 0),
-      }))
-      .filter(r => r.added.length > 0 || r.removed.length > 0)
+
+    const rows: ColorRow[] = []
+    for (const color of COLOR_ORDER) {
+      if (color === 'M') {
+        // Collect all multi-color sub-groups
+        const multiKeys = new Set<string>()
+        for (const k of [...inByColor.keys(), ...outByColor.keys()]) {
+          if (k.startsWith('M:')) multiKeys.add(k)
+        }
+        // Also check for generic 'M' entries
+        const genericIn = inByColor.get('M') ?? []
+        const genericOut = outByColor.get('M') ?? []
+        const allMultiIn = [...genericIn]
+        const allMultiOut = [...genericOut]
+        const subRows: ColorRow[] = []
+
+        const sorted = [...multiKeys].sort()
+        for (const k of sorted) {
+          const pair = k.slice(2) // e.g. "WU"
+          const added = inByColor.get(k) ?? []
+          const removed = outByColor.get(k) ?? []
+          allMultiIn.push(...added)
+          allMultiOut.push(...removed)
+          const pairName = pair.split('').map(c => COLOR_NAMES[c as ColorCategory]?.[0] ?? c).join('')
+          subRows.push({ key: k, name: pairName, bg: COLOR_BG.M, added, removed, net: added.length - removed.length, indent: true })
+        }
+
+        if (allMultiIn.length > 0 || allMultiOut.length > 0) {
+          rows.push({ key: 'M', name: COLOR_NAMES.M, bg: COLOR_BG.M, added: allMultiIn, removed: allMultiOut, net: allMultiIn.length - allMultiOut.length })
+          rows.push(...subRows)
+        }
+      } else {
+        const added = inByColor.get(color) ?? []
+        const removed = outByColor.get(color) ?? []
+        if (added.length > 0 || removed.length > 0) {
+          rows.push({ key: color, name: COLOR_NAMES[color], bg: COLOR_BG[color], added, removed, net: added.length - removed.length })
+        }
+      }
+    }
+    return rows
   }, [changes])
 
   function handleCopyExport() {
@@ -1105,6 +1134,7 @@ function ReviewWorkspace({
               onCardSearch={handleViewCardSearch}
               searchMatchInfo={viewSearchMatchInfo}
               placeholder="Type or search cards…"
+              hasItemsAhead={viewHasItemsAhead}
             />
           )}
 
@@ -1408,13 +1438,17 @@ function ReviewWorkspace({
                   <div className="text-[10px] text-slate-600 uppercase tracking-wider text-right">Out</div>
                   <div className="text-[10px] text-slate-600 uppercase tracking-wider text-right">Net</div>
                   {colorBreakdown.map(row => (
-                    <Fragment key={row.color}>
-                      <div
-                        className="w-3 h-3 rounded-sm shrink-0"
-                        style={{ backgroundColor: row.bg }}
-                        title={row.name}
-                      />
-                      <div className="text-slate-300 font-medium">{row.name}</div>
+                    <Fragment key={row.key}>
+                      {row.indent ? (
+                        <div className="w-3 h-3 shrink-0" />
+                      ) : (
+                        <div
+                          className="w-3 h-3 rounded-sm shrink-0"
+                          style={{ backgroundColor: row.bg }}
+                          title={row.name}
+                        />
+                      )}
+                      <div className={`${row.indent ? 'text-slate-500 text-xs pl-1' : 'text-slate-300 font-medium'}`}>{row.name}</div>
                       <div className="text-green-400 text-right tabular-nums font-mono text-xs">
                         {row.added.length > 0 ? `+${row.added.length}` : ''}
                       </div>
@@ -1433,8 +1467,8 @@ function ReviewWorkspace({
                     Show card names
                   </summary>
                   <div className="mt-2 space-y-2 text-xs">
-                    {colorBreakdown.map(row => (
-                      <div key={row.color}>
+                    {colorBreakdown.filter(r => !r.indent).map(row => (
+                      <div key={row.key}>
                         <div className="font-medium text-slate-400 mb-0.5" style={{ color: row.bg }}>{row.name}</div>
                         {row.added.length > 0 && (
                           <div className="text-green-400/80 ml-2">{row.added.map(n => `+ ${n}`).join(', ')}</div>
