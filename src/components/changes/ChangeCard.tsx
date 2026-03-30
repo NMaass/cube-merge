@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Change, Comment, CommentResolution } from '../../types/firestore'
-import { computeChangeType } from '../../lib/changes'
+import { computeChangeType, isNegativePolarity } from '../../lib/changes'
 import { CardInOutDisplay } from './CardInOutDisplay'
 import { CommentThread } from './CommentThread'
 import { RichText } from '../ui/RichText'
@@ -29,9 +29,10 @@ export function ChangeCard({ change, onAddComment, onSetCommentResolution, onEdi
   const displayType = computeChangeType(change.cardsOut, change.cardsIn, change.type)
 
   // Map card names to colors for [[card]] mentions in comments
+  const negative = isNegativePolarity(displayType)
   const cardColors: Record<string, string> = {}
-  const outColor = displayType === 'keep' ? 'text-teal-400' : 'text-red-400'
-  const inColor = displayType === 'reject' ? 'text-orange-400' : 'text-green-400'
+  const outColor = negative ? 'text-teal-400' : 'text-red-400'
+  const inColor = negative ? 'text-orange-400' : 'text-green-400'
   for (const c of change.cardsOut) cardColors[c.name] = outColor
   for (const c of change.cardsIn) cardColors[c.name] = inColor
 
@@ -42,6 +43,7 @@ export function ChangeCard({ change, onAddComment, onSetCommentResolution, onEdi
     remove: 'border-l-red-500',
     keep: 'border-l-teal-500',
     reject: 'border-l-orange-500',
+    decline: 'border-l-purple-500',
   }
   const borderAccent = `border-l-2 ${borderColors[displayType] ?? ''}`
   const unseenRing = !isSeen ? 'ring-1 ring-amber-500/30 bg-slate-800/90' : ''
@@ -54,10 +56,10 @@ export function ChangeCard({ change, onAddComment, onSetCommentResolution, onEdi
     >
       {/* Header row: avatar + author + actions */}
       <div className="flex items-center gap-1.5 mb-2 min-w-0">
-        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${!isSeen ? 'bg-amber-500/30 text-amber-200' : 'bg-slate-600 text-slate-300'}`}>
+        <div className="w-5 h-5 rounded-full bg-slate-600 flex items-center justify-center text-[10px] font-bold text-slate-300 shrink-0">
           {change.authorName?.[0] || '?'}
         </div>
-        <span className={`text-xs font-medium truncate flex-1 min-w-0 ${!isSeen ? 'text-slate-200' : 'text-slate-400'}`}>{change.authorName}</span>
+        <span className="text-xs font-medium text-slate-400 truncate flex-1 min-w-0">{change.authorName}</span>
         <span className="hidden sm:inline text-[11px] text-slate-600 shrink-0">{date}</span>
         {onEdit && (
           <button

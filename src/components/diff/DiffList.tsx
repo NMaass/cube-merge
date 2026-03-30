@@ -42,11 +42,12 @@ export const DiffList = memo(function DiffList({ sections, imageMap, loadingSet,
   const changeMap = useMemo(() => {
     const map = new Map<string, CardState>()
     for (const change of changes) {
+      const neg = change.type === 'keep' || change.type === 'reject' || change.type === 'decline'
       for (const c of change.cardsOut) {
-        map.set(c.name, change.type === 'keep' ? 'kept' : 'removed')
+        map.set(c.name, neg ? 'kept' : 'removed')
       }
       for (const c of change.cardsIn) {
-        map.set(c.name, change.type === 'reject' ? 'rejected' : 'accepted')
+        map.set(c.name, neg ? 'rejected' : 'accepted')
       }
     }
     return map

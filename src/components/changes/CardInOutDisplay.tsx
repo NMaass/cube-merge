@@ -9,7 +9,7 @@ import { getCachedImage } from '../../lib/imageCache'
 interface CardInOutDisplayProps {
   cardsIn: CubeCard[]
   cardsOut: CubeCard[]
-  type: 'add' | 'remove' | 'swap' | 'keep' | 'reject'
+  type: 'add' | 'remove' | 'swap' | 'keep' | 'reject' | 'decline'
 }
 
 function CardRow({ card, symbol, nameClass, symbolClass, onPreview }: {
@@ -47,34 +47,26 @@ export function CardInOutDisplay({ cardsIn, cardsOut, type }: CardInOutDisplayPr
 
   const preview = (card: CubeCard) => () => setPreviewCard(card)
 
-  const rows = type === 'keep'
-    ? cardsOut.map(c => (
-        <CardRow key={c.name} card={c}
-          symbol="↺" nameClass="text-teal-300" symbolClass="bg-teal-900/60 text-teal-400"
-          onPreview={preview(c)}
-        />
-      ))
-    : type === 'reject'
-    ? cardsIn.map(c => (
-        <CardRow key={c.name} card={c}
-          symbol="×" nameClass="text-orange-300" symbolClass="bg-orange-900/60 text-orange-400"
-          onPreview={preview(c)}
-        />
-      ))
-    : [
-        ...cardsIn.map(c => (
-          <CardRow key={`in-${c.name}`} card={c}
-            symbol="+" nameClass="text-green-300" symbolClass="bg-green-900/60 text-green-400"
-            onPreview={preview(c)}
-          />
-        )),
-        ...cardsOut.map(c => (
-          <CardRow key={`out-${c.name}`} card={c}
-            symbol="−" nameClass="text-red-300" symbolClass="bg-red-900/60 text-red-400"
-            onPreview={preview(c)}
-          />
-        )),
-      ]
+  const negative = type === 'keep' || type === 'reject' || type === 'decline'
+
+  const rows = [
+    ...cardsOut.map(c => (
+      <CardRow key={`out-${c.name}`} card={c}
+        symbol={negative ? '↺' : '−'}
+        nameClass={negative ? 'text-teal-300' : 'text-red-300'}
+        symbolClass={negative ? 'bg-teal-900/60 text-teal-400' : 'bg-red-900/60 text-red-400'}
+        onPreview={preview(c)}
+      />
+    )),
+    ...cardsIn.map(c => (
+      <CardRow key={`in-${c.name}`} card={c}
+        symbol={negative ? '×' : '+'}
+        nameClass={negative ? 'text-orange-300' : 'text-green-300'}
+        symbolClass={negative ? 'bg-orange-900/60 text-orange-400' : 'bg-green-900/60 text-green-400'}
+        onPreview={preview(c)}
+      />
+    )),
+  ]
 
   return (
     <>

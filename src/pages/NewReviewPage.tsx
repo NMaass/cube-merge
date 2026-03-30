@@ -229,8 +229,8 @@ export function ReviewWorkspace({
       const t = computeChangeType(ch.cardsOut, ch.cardsIn, ch.type)
       ;(byType[t] ??= []).push(ch)
     }
-    const order: ChangeType[] = ['swap', 'add', 'remove', 'reject', 'keep']
-    const labels: Record<ChangeType, string> = { swap: 'SWAPS', add: 'ADDITIONS', remove: 'REMOVALS', reject: 'REJECTS', keep: 'KEEPS' }
+    const order: ChangeType[] = ['swap', 'add', 'remove', 'decline', 'reject', 'keep']
+    const labels: Record<ChangeType, string> = { swap: 'SWAPS', add: 'ADDITIONS', remove: 'REMOVALS', decline: 'DECLINES', reject: 'REJECTS', keep: 'KEEPS' }
     for (const t of order) {
       const group = byType[t]
       if (!group?.length) continue

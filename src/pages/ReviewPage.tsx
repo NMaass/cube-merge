@@ -37,9 +37,9 @@ const COPY_FEEDBACK_DURATION_MS = 2000
 
 // ── Type filter tabs for view mode ───────────────────────────────────────────
 
-const TYPE_ORDER: ChangeType[] = ['swap', 'add', 'remove', 'keep', 'reject']
+const TYPE_ORDER: ChangeType[] = ['swap', 'add', 'remove', 'decline', 'keep', 'reject']
 const TYPE_LABELS: Record<ChangeType, string> = {
-  swap: 'Swaps', add: 'Adds', remove: 'Removes', keep: 'Keeps', reject: 'Rejects',
+  swap: 'Swaps', add: 'Adds', remove: 'Removes', decline: 'Declines', keep: 'Keeps', reject: 'Rejects',
 }
 // ── View mode panel ──────────────────────────────────────────────────────────
 
@@ -995,9 +995,9 @@ function ReviewWorkspace({
       const t = computeChangeType(ch.cardsOut, ch.cardsIn, ch.type)
       ;(byType[t] ??= []).push(ch)
     }
-    const order: ChangeType[] = ['swap', 'add', 'remove', 'reject', 'keep']
+    const order: ChangeType[] = ['swap', 'add', 'remove', 'decline', 'reject', 'keep']
     const labels: Record<ChangeType, string> = {
-      swap: 'SWAPS', add: 'ADDITIONS', remove: 'REMOVALS', reject: 'REJECTS', keep: 'KEEPS',
+      swap: 'SWAPS', add: 'ADDITIONS', remove: 'REMOVALS', decline: 'DECLINES', reject: 'REJECTS', keep: 'KEEPS',
     }
     for (const t of order) {
       const group = byType[t]

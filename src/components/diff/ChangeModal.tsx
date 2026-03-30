@@ -29,6 +29,7 @@ const TYPE_TITLES: Record<ChangeType, string> = {
   swap: 'Swap Cards',
   keep: 'Keep Cards',
   reject: 'Reject Cards',
+  decline: 'Decline Cards',
 }
 
 export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCards, onSave, forceType, allDiffCards, reviewerNames }: ChangeModalProps) {
@@ -65,24 +66,25 @@ export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCar
     <Modal open={open} onClose={onClose} title={TYPE_TITLES[type]}>
       <div className="space-y-4">
         <div className="bg-slate-700/50 rounded-lg p-3 space-y-0.5">
-          {forceType === 'reject'
-            ? selectedRightCards.map(c => (
-                <PreviewableCardRow key={c.name} card={c} colorClass="text-orange-300" prefix="×" onPreview={setPreviewCard} />
-              ))
-            : forceType === 'keep'
-            ? selectedLeftCards.map(c => (
-                <PreviewableCardRow key={c.name} card={c} colorClass="text-teal-300" prefix="↺" onPreview={setPreviewCard} />
-              ))
-            : (
+          {(() => {
+            const neg = forceType === 'keep' || forceType === 'reject' || forceType === 'decline'
+            return (
               <>
                 {selectedLeftCards.map(c => (
-                  <PreviewableCardRow key={c.name} card={c} colorClass="text-red-300" prefix="−" onPreview={setPreviewCard} />
+                  <PreviewableCardRow key={c.name} card={c}
+                    colorClass={neg ? 'text-teal-300' : 'text-red-300'}
+                    prefix={neg ? '↺' : '−'}
+                    onPreview={setPreviewCard} />
                 ))}
                 {selectedRightCards.map(c => (
-                  <PreviewableCardRow key={c.name} card={c} colorClass="text-green-300" prefix="+" onPreview={setPreviewCard} />
+                  <PreviewableCardRow key={c.name} card={c}
+                    colorClass={neg ? 'text-orange-300' : 'text-green-300'}
+                    prefix={neg ? '×' : '+'}
+                    onPreview={setPreviewCard} />
                 ))}
               </>
-            )}
+            )
+          })()}
         </div>
 
         <AutocompleteTextarea

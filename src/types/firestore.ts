@@ -18,7 +18,7 @@ export interface Draft {
   updatedAt: Timestamp
 }
 
-export type ChangeType = 'add' | 'remove' | 'swap' | 'keep' | 'reject'
+export type ChangeType = 'add' | 'remove' | 'swap' | 'keep' | 'reject' | 'decline'
 export type CommentResolution = 'none' | 'blocking' | 'resolved'
 
 export interface Change {

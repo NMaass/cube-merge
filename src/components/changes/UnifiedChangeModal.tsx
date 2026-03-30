@@ -11,7 +11,7 @@ import { CardSearch } from './CardSearch'
 import { PreviewableCardRow } from './PreviewableCardRow'
 import { CubeCard } from '../../types/cube'
 import { Change, Comment, ChangeType } from '../../types/firestore'
-import { computeChangeType } from '../../lib/changes'
+import { computeChangeType, isNegativePolarity } from '../../lib/changes'
 
 type WorkingChange = Change & { comments: Comment[] }
 
@@ -55,25 +55,7 @@ const ACCENT_COLORS: Record<ChangeType, string> = {
   remove: 'border-l-red-500',
   keep: 'border-l-teal-500',
   reject: 'border-l-orange-500',
-}
-
-// ── Flip logic ────────────────────────────────────────────────────────────────
-
-const FLIP_MAP: Record<ChangeType, ChangeType> = {
-  remove: 'keep',
-  keep: 'remove',
-  add: 'reject',
-  reject: 'add',
-  swap: 'swap', // swap flips by swapping cardsIn/cardsOut
-}
-
-function flipLabel(type: ChangeType): string {
-  if (type === 'swap') return 'Flip to Decline'
-  if (type === 'remove') return 'Flip to Keep'
-  if (type === 'keep') return 'Flip to Remove'
-  if (type === 'add') return 'Flip to Reject'
-  if (type === 'reject') return 'Flip to Add'
-  return ''
+  decline: 'border-l-purple-500',
 }
 
 // ── Main component ───────────────────────────────────────────────────────────
@@ -140,7 +122,6 @@ export function UnifiedChangeModal({
       setComment(existingChange.initialComment)
       setUnresolved(existingChange.unresolved ?? false)
     } else {
-      // Create mode
       const forceType = initialType
       if (forceType === 'keep') {
         setCardsOut(selectedLeftCards)
@@ -164,6 +145,7 @@ export function UnifiedChangeModal({
 
   // ── Derived state ────────────────────────────────────────────────────────
   const computedType = computeChangeType(cardsOut, cardsIn, baseType)
+  const negative = isNegativePolarity(computedType)
 
   // Filter out already-added cards from candidates
   const outNames = new Set(cardsOut.map(c => c.name))
@@ -171,30 +153,33 @@ export function UnifiedChangeModal({
   const availableA = allCardsA.filter(c => !outNames.has(c.name))
   const availableB = allCardsB.filter(c => !inNames.has(c.name))
 
-  // ── Color helpers ───────────────────────────────────────────────────────
-  const outColor = (computedType === 'keep') ? 'text-teal-400' : 'text-red-400'
-  const outColorPreview = (computedType === 'keep') ? 'text-teal-300' : 'text-red-300'
-  const outPrefix = (computedType === 'keep') ? '↺' : '−'
-  const outLabel = (computedType === 'keep') ? 'Keeping' : 'Removing'
+  // ── Color helpers (driven by polarity) ──────────────────────────────────
+  const outColor = negative ? 'text-teal-400' : 'text-red-400'
+  const outColorPreview = negative ? 'text-teal-300' : 'text-red-300'
+  const outPrefix = negative ? '↺' : '−'
+  const outLabel = negative ? 'Keeping' : 'Removing'
 
-  const inColor = (computedType === 'reject') ? 'text-orange-400' : 'text-green-400'
-  const inColorPreview = (computedType === 'reject') ? 'text-orange-300' : 'text-green-300'
-  const inPrefix = (computedType === 'reject') ? '×' : '+'
-  const inLabel = (computedType === 'reject') ? 'Rejecting' : 'Adding'
+  const inColor = negative ? 'text-orange-400' : 'text-green-400'
+  const inColorPreview = negative ? 'text-orange-300' : 'text-green-300'
+  const inPrefix = negative ? '×' : '+'
+  const inLabel = negative ? 'Rejecting' : 'Adding'
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
+  // ── Flip: toggle polarity, cards stay in place ──────────────────────────
   function handleFlip() {
-    if (computedType === 'swap') {
-      // Swap polarity: swap the two sides — becomes a "decline" (opposite swap)
-      const prevOut = cardsOut
-      const prevIn = cardsIn
-      setCardsOut(prevIn)
-      setCardsIn(prevOut)
+    if (negative) {
+      // Negative → positive: keep→remove, reject→add, decline→swap
+      if (baseType === 'keep') setBaseType('remove')
+      else if (baseType === 'reject') setBaseType('add')
+      else setBaseType('swap')
     } else {
-      const next = FLIP_MAP[baseType]
-      if (next !== baseType) setBaseType(next)
+      // Positive → negative: remove→keep, add→reject, swap→decline
+      if (baseType === 'remove') setBaseType('keep')
+      else if (baseType === 'add') setBaseType('reject')
+      else setBaseType('decline')
     }
   }
+
+  const flipLabel = negative ? 'Flip to positive' : 'Flip to negative'
 
   function handleSave() {
     onSave({
@@ -216,12 +201,13 @@ export function UnifiedChangeModal({
     swap: 'Swap Cards',
     keep: 'Keep Cards',
     reject: 'Reject Cards',
+    decline: 'Decline Cards',
   }
   const title = isEditing ? 'Edit Change' : titleMap[computedType]
 
   // Whether to show each card section
-  const showCardsOut = isEditing || cardsOut.length > 0 || computedType === 'swap' || computedType === 'remove' || computedType === 'keep'
-  const showCardsIn = isEditing || cardsIn.length > 0 || computedType === 'swap' || computedType === 'add' || computedType === 'reject'
+  const showCardsOut = isEditing || cardsOut.length > 0 || computedType === 'swap' || computedType === 'decline' || computedType === 'remove' || computedType === 'keep'
+  const showCardsIn = isEditing || cardsIn.length > 0 || computedType === 'swap' || computedType === 'decline' || computedType === 'add' || computedType === 'reject'
 
   return (
     <Modal open={open} onClose={onClose} title={title} accentColor={ACCENT_COLORS[computedType]}>
@@ -234,8 +220,8 @@ export function UnifiedChangeModal({
             type="button"
             onClick={handleFlip}
             className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-slate-700/60 hover:bg-slate-600 text-slate-400 hover:text-white transition-colors"
-            aria-label={flipLabel(computedType)}
-            title={flipLabel(computedType)}
+            aria-label={flipLabel}
+            title={flipLabel}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />

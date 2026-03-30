@@ -1,6 +1,6 @@
 interface BadgeProps {
   children: React.ReactNode
-  variant?: 'default' | 'green' | 'red' | 'yellow' | 'blue' | 'orange' | 'teal'
+  variant?: 'default' | 'green' | 'red' | 'yellow' | 'blue' | 'orange' | 'teal' | 'purple'
   className?: string
 }
 
@@ -13,6 +13,7 @@ export function Badge({ children, variant = 'default', className = '' }: BadgePr
     blue: 'bg-blue-900/50 text-blue-300 border border-blue-700',
     orange: 'bg-orange-900/50 text-orange-300 border border-orange-700',
     teal: 'bg-teal-900/50 text-teal-300 border border-teal-700',
+    purple: 'bg-purple-900/50 text-purple-300 border border-purple-700',
   }
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${variants[variant]} ${className}`}>

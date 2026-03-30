@@ -4,7 +4,7 @@ import { Button } from '../ui/Button'
 import { AutocompleteTextarea } from '../ui/AutocompleteTextarea'
 import { Change, Comment, ChangeType } from '../../types/firestore'
 import { CubeCard } from '../../types/cube'
-import { computeChangeType } from '../../lib/changes'
+import { computeChangeType, isNegativePolarity } from '../../lib/changes'
 
 type WorkingChange = Change & { comments: Comment[] }
 
@@ -52,41 +52,50 @@ export function SplitChangeModal({ open, onClose, change, onSplit, diffCards = [
       <div className="space-y-4">
         <p className="text-sm text-slate-400">Check the cards to move into their own change. At least one card must stay here.</p>
 
-        {change.cardsOut.length > 0 && (
-          <div className="space-y-1.5">
-            <div className="text-xs font-medium text-slate-400 uppercase tracking-wide">
-              {change.type === 'keep' ? 'Keeping' : 'Removing'}
-            </div>
-            {change.cardsOut.map(c => (
-              <label key={c.name} className="flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-slate-700/40 cursor-pointer transition-colors">
-                <input
-                  type="checkbox"
-                  checked={splitOut.has(c.name)}
-                  onChange={() => setSplitOut(prev => toggle(prev, c.name))}
-                  className="w-3.5 h-3.5 rounded accent-amber-500 shrink-0"
-                />
-                <span className={`text-sm ${change.type === 'keep' ? 'text-teal-300' : 'text-red-300'}`}>{c.name}</span>
-              </label>
-            ))}
-          </div>
-        )}
+        {(() => {
+          const neg = isNegativePolarity(change.type)
+          return (
+            <>
+              {change.cardsOut.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                    {neg ? 'Keeping' : 'Removing'}
+                  </div>
+                  {change.cardsOut.map(c => (
+                    <label key={c.name} className="flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-slate-700/40 cursor-pointer transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={splitOut.has(c.name)}
+                        onChange={() => setSplitOut(prev => toggle(prev, c.name))}
+                        className="w-3.5 h-3.5 rounded accent-amber-500 shrink-0"
+                      />
+                      <span className={`text-sm ${neg ? 'text-teal-300' : 'text-red-300'}`}>{c.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
 
-        {change.cardsIn.length > 0 && change.type !== 'keep' && (
-          <div className="space-y-1.5">
-            <div className="text-xs font-medium text-slate-400 uppercase tracking-wide">Adding</div>
-            {change.cardsIn.map(c => (
-              <label key={c.name} className="flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-slate-700/40 cursor-pointer transition-colors">
-                <input
-                  type="checkbox"
-                  checked={splitIn.has(c.name)}
-                  onChange={() => setSplitIn(prev => toggle(prev, c.name))}
-                  className="w-3.5 h-3.5 rounded accent-amber-500 shrink-0"
-                />
-                <span className="text-sm text-green-300">{c.name}</span>
-              </label>
-            ))}
-          </div>
-        )}
+              {change.cardsIn.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                    {neg ? 'Rejecting' : 'Adding'}
+                  </div>
+                  {change.cardsIn.map(c => (
+                    <label key={c.name} className="flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-slate-700/40 cursor-pointer transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={splitIn.has(c.name)}
+                        onChange={() => setSplitIn(prev => toggle(prev, c.name))}
+                        className="w-3.5 h-3.5 rounded accent-amber-500 shrink-0"
+                      />
+                      <span className={`text-sm ${neg ? 'text-orange-300' : 'text-green-300'}`}>{c.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </>
+          )
+        })()}
 
         <AutocompleteTextarea
           value={comment}
