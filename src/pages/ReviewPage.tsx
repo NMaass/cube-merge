@@ -4,7 +4,7 @@ import { getCachedReview, setCachedReview } from '../lib/reviewCache'
 import { Helmet } from 'react-helmet-async'
 import {
   doc, collection, getDoc, setDoc, updateDoc, onSnapshot,
-  Timestamp, writeBatch,
+  Timestamp, writeBatch, arrayUnion, arrayRemove,
 } from 'firebase/firestore'
 import { nanoid } from 'nanoid'
 import { db } from '../lib/firebase'
@@ -20,9 +20,9 @@ import { UnifiedChangeModal, ChangeData } from '../components/changes/UnifiedCha
 import { PassModal } from '../components/diff/PassModal'
 import { SplitChangeModal } from '../components/changes/SplitChangeModal'
 import { ChangeCard } from '../components/changes/ChangeCard'
+import { SwipeableCard } from '../components/changes/SwipeableCard'
 import { useCardImages } from '../hooks/useCardImages'
 import { useSectionNav } from '../hooks/useSectionNav'
-import { useApprovedChanges } from '../hooks/useApprovedChanges'
 import { groupBySection, sectionLabel, parseSectionNotation, COLOR_ORDER, COLOR_NAMES, COLOR_BG } from '../lib/sorting'
 import { ColorCategory } from '../types/cube'
 import { computeChangeType } from '../lib/changes'
@@ -47,7 +47,6 @@ function ViewModePanel({
   changes, identity, reviewId,
   highlightedChangeId,
   approvedSectionOpen, setApprovedSectionOpen,
-  isApproved, isStale,
   onApprove, onUnapprove,
   onAddComment, onSetCommentResolution, onEditComment, onEdit,
   allDiffCards, reviewerNames,
@@ -59,8 +58,6 @@ function ViewModePanel({
   highlightedChangeId: string | null
   approvedSectionOpen: boolean
   setApprovedSectionOpen: (open: boolean) => void
-  isApproved: (id: string) => boolean
-  isStale: (id: string, updatedAt: number, authorId?: string) => boolean
   onApprove: (ch: LiveChange) => void
   onUnapprove: (ch: LiveChange) => void
   onAddComment: (changeId: string, body: string, res: CommentResolution) => void
@@ -95,13 +92,17 @@ function ViewModePanel({
   const totalOut = removedNames.size
   const net = totalIn - totalOut
 
-  // Sort within-group: unresolved first, then mentions, then recency
+  // Sort within-group: unseen first, then unresolved, then mentions, then recency
   const myMention = `@${identity.displayName}`
   const hasMention = (c: LiveChange) =>
     !/^Reviewer\d*$/.test(identity.displayName) &&
     c.comments.some(cm => cm.body.toLowerCase().includes(myMention.toLowerCase()))
+  const isSeen = (c: LiveChange) => c.seenBy?.includes(identity.id) ?? false
 
   function withinGroupSort(a: LiveChange, b: LiveChange) {
+    const aS = isSeen(a), bS = isSeen(b)
+    if (!aS && bS) return -1
+    if (aS && !bS) return 1
     if (a.unresolved && !b.unresolved) return -1
     if (!a.unresolved && b.unresolved) return 1
     const aM = hasMention(a), bM = hasMention(b)
@@ -112,7 +113,7 @@ function ViewModePanel({
 
   // Split into active vs approved
   const effectivelyApproved = (ch: LiveChange) =>
-    isApproved(ch.id) && !isStale(ch.id, ch.updatedAt?.toMillis() ?? ch.createdAt?.toMillis() ?? 0, ch.updatedBy)
+    (ch.approvedBy?.includes(identity.id) ?? false) && isSeen(ch)
 
   // Group active changes by type, in TYPE_ORDER
   const grouped: { type: ChangeType; label: string; changes: LiveChange[] }[] = []
@@ -133,19 +134,24 @@ function ViewModePanel({
 
   function renderChangeCard(change: LiveChange, approved: boolean) {
     return (
-      <ChangeCard
+      <SwipeableCard
         key={change.id}
-        change={change}
-        onAddComment={(body, res) => onAddComment(change.id, body, res)}
-        onSetCommentResolution={(commentId, res) => onSetCommentResolution(change.id, commentId, res)}
-        onEditComment={(commentId, newBody) => onEditComment(change.id, commentId, newBody)}
-        onEdit={() => onEdit(change)}
-        onApprove={() => approved ? onUnapprove(change) : onApprove(change)}
-        isApproved={approved}
-        diffCards={allDiffCards}
-        reviewerNames={reviewerNames}
-        highlighted={highlightedChangeId === change.id}
-      />
+        onSwipeRight={() => approved ? onUnapprove(change) : onApprove(change)}
+        isActive={approved}
+      >
+        <ChangeCard
+          change={change}
+          onAddComment={(body, res) => onAddComment(change.id, body, res)}
+          onSetCommentResolution={(commentId, res) => onSetCommentResolution(change.id, commentId, res)}
+          onEditComment={(commentId, newBody) => onEditComment(change.id, commentId, newBody)}
+          onEdit={() => onEdit(change)}
+          isSeen={isSeen(change)}
+          currentUserName={identity.displayName}
+          diffCards={allDiffCards}
+          reviewerNames={reviewerNames}
+          highlighted={highlightedChangeId === change.id}
+        />
+      </SwipeableCard>
     )
   }
 
@@ -251,7 +257,7 @@ function ReviewWorkspace({
   reviewId: string
   review: Review
 }) {
-  const { identity, setName } = useAuth()
+  const { identity, setName, claimIdentity } = useAuth()
   const { selectedLeft, selectedRight, clearSelection } = useEditMode()
   const [searchParams] = useSearchParams()
   const [changes, setChanges] = useState<LiveChange[]>([])
@@ -283,7 +289,8 @@ function ReviewWorkspace({
   const [highlightedChangeId, setHighlightedChangeId] = useState<string | null>(null)
   const [approvedSectionOpen, setApprovedSectionOpen] = useState(false)
   const [resolveConfirmChange, setResolveConfirmChange] = useState<LiveChange | null>(null)
-  const { approve, unapprove, isApproved, isStale } = useApprovedChanges(reviewId!)
+  const [identityMap, setIdentityMap] = useState<Record<string, { name: string; lastSeen?: Timestamp }>>({})
+
 
   const diffData = review.rawData
   const cubeAId = review.cubeAId
@@ -318,11 +325,42 @@ function ReviewWorkspace({
     : ''
   const findSection = (input: string) => parseSectionNotation(input, sections)
 
+  // ── Approval helpers (Firestore-backed) ───────────────────────────────────
+  const isApproved = useCallback((ch: LiveChange) =>
+    ch.approvedBy?.includes(identity.id) ?? false,
+    [identity.id])
+
+  async function handleApprove(ch: LiveChange) {
+    if (ch.unresolved) {
+      setResolveConfirmChange(ch)
+      return
+    }
+    try {
+      await updateDoc(changeDocRef(ch.id), {
+        approvedBy: arrayUnion(identity.id),
+        seenBy: [identity.id],
+      })
+    } catch (e) {
+      showActionError('Could not approve. Please try again.', e)
+    }
+  }
+
+  async function handleUnapprove(ch: LiveChange) {
+    try {
+      await updateDoc(changeDocRef(ch.id), {
+        approvedBy: arrayRemove(identity.id),
+        seenBy: [identity.id],
+      })
+    } catch (e) {
+      showActionError('Could not unapprove. Please try again.', e)
+    }
+  }
+
   // ── View-mode section nav ─────────────────────────────────────────────────
-  // Sections: Unresolved (if any) → type groups that exist → Approved (if any)
+  // Sections: type groups that exist → Approved (if any)
   const effectivelyApprovedFn = useCallback((ch: LiveChange) =>
-    isApproved(ch.id) && !isStale(ch.id, ch.updatedAt?.toMillis() ?? ch.createdAt?.toMillis() ?? 0, ch.updatedBy),
-    [isApproved, isStale])
+    isApproved(ch) && (ch.seenBy?.includes(identity.id) ?? false),
+    [isApproved, identity.id])
 
   const viewSections = useMemo(() => {
     const secs: { key: string; label: string }[] = []
@@ -433,7 +471,7 @@ function ReviewWorkspace({
     ? `${viewSearchMatchIndex + 1}/${viewSearchMatches.length}`
     : viewCardSearch.trim() ? '0/0' : undefined
 
-  // Check if sections ahead of the current one have unresolved changes
+  // Check if sections ahead of the current one have unseen or unresolved changes
   const viewHasItemsAhead = useMemo(() => {
     if (viewSections.length === 0 || viewSectionIndex >= viewSections.length - 1) return false
     for (let i = viewSectionIndex + 1; i < viewSections.length; i++) {
@@ -443,10 +481,10 @@ function ReviewWorkspace({
         const dt = computeChangeType(ch.cardsOut, ch.cardsIn, ch.type)
         return dt === sectionKey
       })
-      if (sectionChanges.some(ch => ch.unresolved)) return true
+      if (sectionChanges.some(ch => ch.unresolved || !(ch.seenBy?.includes(identity.id)))) return true
     }
     return false
-  }, [viewSections, viewSectionIndex, changes])
+  }, [viewSections, viewSectionIndex, changes, identity.id])
 
   // Subscribe to changes subcollection
   useEffect(() => {
@@ -460,6 +498,21 @@ function ReviewWorkspace({
     )
     return unsubscribe
   }, [reviewId])
+
+  // Subscribe to identity map + register current user
+  useEffect(() => {
+    const metaRef = doc(db, 'reviews', reviewId, 'meta', 'identities')
+    const unsubscribe = onSnapshot(metaRef, (snap) => {
+      if (snap.exists()) {
+        setIdentityMap(snap.data() as Record<string, { name: string; lastSeen?: Timestamp }>)
+      }
+    })
+    // Register current user
+    setDoc(metaRef, {
+      [identity.id]: { name: identity.displayName, lastSeen: Timestamp.now() },
+    }, { merge: true }).catch(() => { /* ignore write errors */ })
+    return unsubscribe
+  }, [reviewId, identity.id, identity.displayName])
 
   const selectedLeftCards = sections.flatMap(s => s.cardsA).filter(c => selectedLeft.has(c.name))
   const selectedRightCards = sections.flatMap(s => s.cardsB).filter(c => selectedRight.has(c.name))
@@ -534,6 +587,7 @@ function ReviewWorkspace({
           updatedAt: now,
           updatedBy: identity.id,
           updatedByName: identity.displayName,
+          seenBy: [identity.id],
         })
         batch.set(doc(eventsRef()), {
           type: 'change_edited',
@@ -560,6 +614,7 @@ function ReviewWorkspace({
       unresolved,
       createdAt: now,
       comments: [],
+      seenBy: [identity.id],
     }
     batch.set(
       doc(db, 'reviews', reviewId, 'changes', newChangeId),
@@ -604,6 +659,7 @@ function ReviewWorkspace({
         updatedAt: now,
         updatedBy: identity.id,
         updatedByName: identity.displayName,
+        seenBy: [identity.id],
       })
       await setDoc(doc(eventsRef()), {
         type: 'change_edited',
@@ -668,6 +724,7 @@ function ReviewWorkspace({
       updatedAt: now,
       updatedBy: identity.id,
       updatedByName: identity.displayName,
+      seenBy: [identity.id],
     })
     batch.set(doc(eventsRef()), {
       type: 'change_edited',
@@ -691,6 +748,7 @@ function ReviewWorkspace({
       authorPhotoURL: identity.photoURL,
       unresolved: false,
       createdAt: now,
+      seenBy: [identity.id],
       comments: original.comments.map(c => ({ ...c })),
     }
     batch.set(
@@ -731,6 +789,7 @@ function ReviewWorkspace({
     try {
       await updateDoc(changeDocRef(changeId), {
         comments: cleanForFirestore([...c.comments, newComment]),
+        seenBy: [identity.id],
       })
       setActionError(null)
     } catch (e) {
@@ -749,6 +808,7 @@ function ReviewWorkspace({
     try {
       await updateDoc(changeDocRef(changeId), {
         comments: cleanForFirestore(updated),
+        seenBy: [identity.id],
       })
       setActionError(null)
     } catch (e) {
@@ -765,6 +825,7 @@ function ReviewWorkspace({
     try {
       await updateDoc(changeDocRef(changeId), {
         comments: cleanForFirestore(updated),
+        seenBy: [identity.id],
       })
       setActionError(null)
     } catch (e) {
@@ -775,14 +836,48 @@ function ReviewWorkspace({
   async function handleSetName() {
     const trimmed = nameInput.trim()
     if (!trimmed) return
-    setName(trimmed)
+
+    // Check if the user is claiming an existing identity
+    const existingEntry = Object.entries(identityMap).find(
+      ([id, entry]) => entry.name === trimmed && id !== identity.id
+    )
+    const oldId = identity.id
+
+    if (existingEntry) {
+      // Claim existing identity — swap nanoid
+      const [claimedId] = existingEntry
+      claimIdentity(claimedId, trimmed)
+      // Remove old identity from map, update claimed entry
+      const metaRef = doc(db, 'reviews', reviewId, 'meta', 'identities')
+      const updates: Record<string, unknown> = {
+        [claimedId]: { name: trimmed, lastSeen: Timestamp.now() },
+      }
+      // Only delete old entry if it was a different id
+      if (oldId !== claimedId) {
+        // Firestore doesn't support deleting a field in setDoc with merge,
+        // so we use updateDoc with deleteField — but for simplicity, just overwrite
+        // the old entry with a marker or let it stay (it's harmless)
+      }
+      setDoc(metaRef, updates, { merge: true }).catch(() => { /* ignore */ })
+    } else {
+      // Regular name change
+      setName(trimmed)
+      // Update identity map
+      const metaRef = doc(db, 'reviews', reviewId, 'meta', 'identities')
+      setDoc(metaRef, {
+        [identity.id]: { name: trimmed, lastSeen: Timestamp.now() },
+      }, { merge: true }).catch(() => { /* ignore */ })
+    }
+
     setEditingName(false)
+
     // Retroactively update attribution on this user's existing changes and comments.
+    const authorId = existingEntry ? existingEntry[0] : identity.id
     const updatedChanges = changes.map(change => ({
       ...change,
-      authorName: change.authorId === identity.id ? trimmed : change.authorName,
+      authorName: change.authorId === authorId ? trimmed : change.authorName,
       comments: change.comments.map(cm => (
-        cm.authorId === identity.id ? { ...cm, authorName: trimmed } : cm
+        cm.authorId === authorId ? { ...cm, authorName: trimmed } : cm
       )),
     }))
     const touchedChanges = updatedChanges.filter((change, index) => {
@@ -1290,16 +1385,8 @@ function ReviewWorkspace({
             highlightedChangeId={highlightedChangeId}
             approvedSectionOpen={approvedSectionOpen}
             setApprovedSectionOpen={setApprovedSectionOpen}
-            isApproved={isApproved}
-            isStale={isStale}
-            onApprove={(ch) => {
-              if (ch.unresolved) {
-                setResolveConfirmChange(ch)
-              } else {
-                approve(ch.id, ch.updatedAt?.toMillis() ?? ch.createdAt?.toMillis() ?? 0, identity.id)
-              }
-            }}
-            onUnapprove={(ch) => unapprove(ch.id)}
+            onApprove={handleApprove}
+            onUnapprove={handleUnapprove}
             onAddComment={(changeId, body, res) => handleAddComment(changeId, body, res)}
             onSetCommentResolution={(changeId, commentId, res) => handleSetCommentResolution(changeId, commentId, res)}
             onEditComment={(changeId, commentId, newBody) => handleEditComment(changeId, commentId, newBody)}
@@ -1375,6 +1462,33 @@ function ReviewWorkspace({
               aria-label="Your display name"
               className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
             />
+            {/* Existing participant suggestions */}
+            {(() => {
+              const existingNames = [...new Set(Object.values(identityMap).map(e => e.name))]
+                .filter(n => !/^Reviewer\d*$/.test(n) && n !== identity.displayName)
+              if (existingNames.length === 0) return null
+              return (
+                <div className="space-y-1.5">
+                  <p className="text-xs text-slate-500">Pick your name to continue from another device</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {existingNames.map(name => (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => setNameInput(name)}
+                        className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
+                          nameInput === name
+                            ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+                            : 'bg-slate-700/60 border-slate-600 text-slate-400 hover:text-slate-200 hover:border-slate-500'
+                        }`}
+                      >
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
             <div className="flex justify-end gap-2">
               <Button variant="secondary" size="sm" onClick={() => setEditingName(false)}>Cancel</Button>
               <Button size="sm" onClick={handleSetName} disabled={!nameInput.trim()}>Save</Button>
@@ -1496,20 +1610,30 @@ function ReviewWorkspace({
               This change is marked as unresolved. Would you like to mark it as resolved?
             </p>
             <div className="flex justify-end gap-2">
-              <Button variant="secondary" size="sm" onClick={() => {
+              <Button variant="secondary" size="sm" onClick={async () => {
                 if (resolveConfirmChange) {
-                  approve(resolveConfirmChange.id, resolveConfirmChange.updatedAt?.toMillis() ?? resolveConfirmChange.createdAt?.toMillis() ?? 0, identity.id)
+                  try {
+                    await updateDoc(changeDocRef(resolveConfirmChange.id), {
+                      approvedBy: arrayUnion(identity.id),
+                      seenBy: [identity.id],
+                    })
+                  } catch (e) {
+                    showActionError('Could not approve. Please try again.', e)
+                  }
                 }
                 setResolveConfirmChange(null)
               }}>No, keep unresolved</Button>
               <Button size="sm" onClick={async () => {
                 if (resolveConfirmChange) {
                   try {
-                    await updateDoc(changeDocRef(resolveConfirmChange.id), { unresolved: false })
+                    await updateDoc(changeDocRef(resolveConfirmChange.id), {
+                      unresolved: false,
+                      approvedBy: arrayUnion(identity.id),
+                      seenBy: [identity.id],
+                    })
                   } catch (e) {
-                    showActionError('Could not mark as resolved.', e)
+                    showActionError('Could not resolve and approve. Please try again.', e)
                   }
-                  approve(resolveConfirmChange.id, resolveConfirmChange.updatedAt?.toMillis() ?? resolveConfirmChange.createdAt?.toMillis() ?? 0, identity.id)
                 }
                 setResolveConfirmChange(null)
               }}>Yes, resolve</Button>

@@ -11,16 +11,19 @@ interface ChangeCardProps {
   onSetCommentResolution?: (commentId: string, resolution: CommentResolution) => void
   onEditComment?: (commentId: string, newBody: string) => void
   onEdit?: () => void
-  onApprove?: () => void
-  isApproved?: boolean
+  isSeen?: boolean
+  currentUserName?: string
   diffCards?: string[]
   reviewerNames?: string[]
   /** Used for card search scroll-to highlighting */
   highlighted?: boolean
 }
 
-export function ChangeCard({ change, onAddComment, onSetCommentResolution, onEditComment, onEdit, onApprove, isApproved, diffCards, reviewerNames, highlighted }: ChangeCardProps) {
-  const [expanded, setExpanded] = useState(false)
+export function ChangeCard({ change, onAddComment, onSetCommentResolution, onEditComment, onEdit, isSeen = true, currentUserName, diffCards, reviewerNames, highlighted }: ChangeCardProps) {
+  // Auto-expand if current user is @mentioned in any comment
+  const mentionedInComments = currentUserName && !/^Reviewer\d*$/.test(currentUserName) &&
+    change.comments.some(cm => cm.body.toLowerCase().includes(`@${currentUserName.toLowerCase()}`))
+  const [expanded, setExpanded] = useState(!!mentionedInComments)
   const date = change.createdAt?.toDate?.()?.toLocaleDateString() || ''
   const commentCount = change.comments.length
   const displayType = computeChangeType(change.cardsOut, change.cardsIn, change.type)
@@ -41,49 +44,21 @@ export function ChangeCard({ change, onAddComment, onSetCommentResolution, onEdi
     reject: 'border-l-orange-500',
   }
   const borderAccent = `border-l-2 ${borderColors[displayType] ?? ''}`
+  const unseenRing = !isSeen ? 'ring-1 ring-amber-500/30 bg-slate-800/90' : ''
 
   return (
     <div
-      className={`bg-slate-800 border border-slate-700 rounded-lg p-3 ${borderAccent} ${highlighted ? 'ring-2 ring-amber-500/60' : ''} transition-shadow`}
+      className={`bg-slate-800 border border-slate-700 rounded-lg p-3 ${borderAccent} ${unseenRing} ${highlighted ? 'ring-2 ring-amber-500/60' : ''} transition-shadow`}
       id={`change-${change.id}`}
       data-change-id={change.id}
     >
       {/* Header row: avatar + author + actions */}
       <div className="flex items-center gap-1.5 mb-2 min-w-0">
-        <div className="w-5 h-5 rounded-full bg-slate-600 flex items-center justify-center text-[10px] font-bold text-slate-300 shrink-0">
+        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${!isSeen ? 'bg-amber-500/30 text-amber-200' : 'bg-slate-600 text-slate-300'}`}>
           {change.authorName?.[0] || '?'}
         </div>
-        <span className="text-xs font-medium text-slate-400 truncate flex-1 min-w-0">{change.authorName}</span>
+        <span className={`text-xs font-medium truncate flex-1 min-w-0 ${!isSeen ? 'text-slate-200' : 'text-slate-400'}`}>{change.authorName}</span>
         <span className="hidden sm:inline text-[11px] text-slate-600 shrink-0">{date}</span>
-        {/* Comment bubble */}
-        <button
-          onClick={() => setExpanded(!expanded)}
-          aria-expanded={expanded}
-          aria-label={commentCount > 0 ? `${commentCount} comments` : 'Add comment'}
-          className="touch-target inline-flex items-center gap-0.5 h-7 px-1.5 rounded-md text-slate-500 hover:text-slate-300 hover:bg-slate-700/60 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-          {commentCount > 0 && <span className="text-[11px] tabular-nums">{commentCount}</span>}
-        </button>
-        {onApprove && (
-          <button
-            onClick={onApprove}
-            className={`touch-target inline-flex items-center justify-center h-7 w-7 sm:w-auto sm:px-2 rounded-md border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-green-400/50 active:scale-[0.97] text-xs font-medium ${
-              isApproved
-                ? 'bg-green-500/20 border-green-500/50 text-green-400 hover:bg-green-500/30'
-                : 'bg-transparent border-slate-600 text-slate-500 hover:text-green-400 hover:border-green-500/40'
-            }`}
-            aria-label={isApproved ? 'Unapprove change' : 'Approve change'}
-            title={isApproved ? 'Unapprove' : 'Approve'}
-          >
-            <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span className="hidden sm:inline ml-1">{isApproved ? 'Approved' : 'Approve'}</span>
-          </button>
-        )}
         {onEdit && (
           <button
             onClick={onEdit}
@@ -107,6 +82,21 @@ export function ChangeCard({ change, onAddComment, onSetCommentResolution, onEdi
           <RichText body={change.initialComment} className="text-xs text-slate-400 leading-snug whitespace-pre-wrap" cardColors={cardColors} />
         </div>
       )}
+
+      {/* Full-width comment button */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
+        className="touch-target w-full mt-2 flex items-center justify-center gap-2 min-h-[44px] px-3 py-2 rounded-md bg-slate-700/50 hover:bg-slate-700 border border-slate-600/50 hover:border-slate-500 text-sm text-slate-400 hover:text-slate-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+      >
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+        {commentCount > 0 ? `${commentCount} comment${commentCount !== 1 ? 's' : ''}` : 'Add comment'}
+        <svg className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
 
       {expanded && (
         <CommentThread

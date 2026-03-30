@@ -12,7 +12,7 @@ import { SectionNav } from '../components/diff/SectionNav'
 import { DiffList } from '../components/diff/DiffList'
 import { ModeToggle } from '../components/diff/ModeToggle'
 import { ChangeModal } from '../components/diff/ChangeModal'
-import { EditChangeModal } from '../components/changes/EditChangeModal'
+import { UnifiedChangeModal, ChangeData } from '../components/changes/UnifiedChangeModal'
 import { SplitChangeModal } from '../components/changes/SplitChangeModal'
 import { ChangeCard } from '../components/changes/ChangeCard'
 import { useCubeCobraData } from '../hooks/useCubeCobraData'
@@ -178,8 +178,16 @@ export function ReviewWorkspace({
     ))
   }
 
-  function handleEditChange(changeId: string, updates: { initialComment: string; cardsOut: CubeCard[]; cardsIn: CubeCard[]; type: ChangeType; unresolved: boolean }) {
-    setChanges(prev => prev.map(c => c.id === changeId ? { ...c, ...updates } : c))
+  function handleEditChange(data: ChangeData) {
+    if (!data.changeId) return
+    setChanges(prev => prev.map(c => c.id === data.changeId ? {
+      ...c,
+      initialComment: data.comment,
+      cardsOut: data.cardsOut,
+      cardsIn: data.cardsIn,
+      type: data.type,
+      unresolved: data.unresolved,
+    } : c))
   }
 
   function handleSplitChange(
@@ -608,10 +616,10 @@ export function ReviewWorkspace({
         />
 
         {editingChange && (
-          <EditChangeModal
+          <UnifiedChangeModal
             open={!!editingChange}
             onClose={() => setEditingChange(null)}
-            change={editingChange}
+            existingChange={editingChange}
             allCardsA={diffData.onlyA}
             allCardsB={diffData.onlyB}
             onSave={handleEditChange}

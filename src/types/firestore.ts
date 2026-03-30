@@ -78,6 +78,8 @@ export interface LiveChange {
   deletedAt?: Timestamp
   deletedBy?: string
   deletedByName?: string
+  seenBy?: string[]
+  approvedBy?: string[]
 }
 
 export type ReviewEventType = 'change_created' | 'change_edited' | 'change_deleted'

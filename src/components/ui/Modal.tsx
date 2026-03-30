@@ -5,9 +5,11 @@ interface ModalProps {
   onClose: () => void
   title: string
   children: React.ReactNode
+  /** Optional accent color shown as a left border on the modal panel. */
+  accentColor?: string
 }
 
-export function Modal({ open, onClose, title, children }: ModalProps) {
+export function Modal({ open, onClose, title, children, accentColor }: ModalProps) {
   const titleId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
   const prevOpenRef = useRef(false)
@@ -79,7 +81,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
       <div
         ref={panelRef}
         tabIndex={-1}
-        className="relative bg-slate-800 rounded-xl shadow-2xl w-full max-w-md mx-4 flex flex-col max-h-[calc(100dvh-2rem)] focus:outline-none"
+        className={`relative bg-slate-800 rounded-xl shadow-2xl w-full max-w-md mx-4 flex flex-col max-h-[calc(100dvh-2rem)] focus:outline-none ${accentColor ? `border-l-[3px] ${accentColor}` : ''}`}
       >
         <div className="flex items-center justify-between px-4 pt-4 sm:px-6 sm:pt-6 mb-4 shrink-0">
           <h2 id={titleId} className="text-lg font-semibold text-white">{title}</h2>

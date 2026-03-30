@@ -60,7 +60,7 @@ service cloud.firestore {
           // Required fields present
           request.resource.data.keys().hasAll(['type', 'cardsIn', 'cardsOut', 'initialComment', 'authorId', 'authorName', 'authorPhotoURL', 'createdAt', 'comments'])
           // No extra fields beyond the known schema
-          && request.resource.data.keys().hasOnly(['type', 'cardsIn', 'cardsOut', 'initialComment', 'authorId', 'authorName', 'authorPhotoURL', 'createdAt', 'comments', 'unresolved', 'id'])
+          && request.resource.data.keys().hasOnly(['type', 'cardsIn', 'cardsOut', 'initialComment', 'authorId', 'authorName', 'authorPhotoURL', 'createdAt', 'comments', 'unresolved', 'id', 'seenBy', 'approvedBy'])
           // Size limits
           && request.resource.data.initialComment is string
           && request.resource.data.initialComment.size() <= 2000
@@ -70,6 +70,12 @@ service cloud.firestore {
           && request.resource.data.cardsOut.size() <= 100;
         allow update: if true;
         allow delete: if false;
+      }
+
+      // Meta: per-review metadata (identity map, etc.)
+      match /meta/{docId} {
+        allow read: if true;
+        allow write: if true;
       }
 
       // Events: append-only log; no update or delete

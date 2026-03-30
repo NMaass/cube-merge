@@ -47,22 +47,33 @@ function EditableCardRow({ card, colorClass, onRemove }: {
   )
 }
 
-// ── Flip icon ───────────────────────────────────────────────────────────────
+// ── Accent color map ──────────────────────────────────────────────────────────
 
-function FlipButton({ onClick, label }: { onClick: () => void; label: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-slate-700/60 hover:bg-slate-600 text-slate-400 hover:text-white transition-colors"
-      aria-label={label}
-      title={label}
-    >
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-      </svg>
-    </button>
-  )
+const ACCENT_COLORS: Record<ChangeType, string> = {
+  swap: 'border-l-amber-500',
+  add: 'border-l-green-500',
+  remove: 'border-l-red-500',
+  keep: 'border-l-teal-500',
+  reject: 'border-l-orange-500',
+}
+
+// ── Flip logic ────────────────────────────────────────────────────────────────
+
+const FLIP_MAP: Record<ChangeType, ChangeType> = {
+  remove: 'keep',
+  keep: 'remove',
+  add: 'reject',
+  reject: 'add',
+  swap: 'swap', // swap flips by swapping cardsIn/cardsOut
+}
+
+function flipLabel(type: ChangeType): string {
+  if (type === 'swap') return 'Flip to Decline'
+  if (type === 'remove') return 'Flip to Keep'
+  if (type === 'keep') return 'Flip to Remove'
+  if (type === 'add') return 'Flip to Reject'
+  if (type === 'reject') return 'Flip to Add'
+  return ''
 }
 
 // ── Main component ───────────────────────────────────────────────────────────
@@ -78,9 +89,9 @@ interface UnifiedChangeModalProps {
   initialType?: ChangeType
   /** Edit mode: existing change to modify. */
   existingChange?: WorkingChange
-  /** All available cards from cube A (for CardSearch in edit mode). */
+  /** All available cards from cube A (for CardSearch). */
   allCardsA?: CubeCard[]
-  /** All available cards from cube B (for CardSearch in edit mode). */
+  /** All available cards from cube B (for CardSearch). */
   allCardsB?: CubeCard[]
   /** Callback for save — works for both create and edit. */
   onSave: (data: ChangeData) => void
@@ -142,7 +153,6 @@ export function UnifiedChangeModal({
       } else {
         setCardsOut(selectedLeftCards)
         setCardsIn(selectedRightCards)
-        // Derive type from selection
         if (selectedLeftCards.length > 0 && selectedRightCards.length > 0) setBaseType('swap')
         else if (selectedLeftCards.length > 0) setBaseType('remove')
         else setBaseType('add')
@@ -155,29 +165,36 @@ export function UnifiedChangeModal({
   // ── Derived state ────────────────────────────────────────────────────────
   const computedType = computeChangeType(cardsOut, cardsIn, baseType)
 
-  // Filter out already-added cards from candidates (edit mode)
+  // Filter out already-added cards from candidates
   const outNames = new Set(cardsOut.map(c => c.name))
   const inNames = new Set(cardsIn.map(c => c.name))
   const availableA = allCardsA.filter(c => !outNames.has(c.name))
   const availableB = allCardsB.filter(c => !inNames.has(c.name))
 
+  // ── Color helpers ───────────────────────────────────────────────────────
+  const outColor = (computedType === 'keep') ? 'text-teal-400' : 'text-red-400'
+  const outColorPreview = (computedType === 'keep') ? 'text-teal-300' : 'text-red-300'
+  const outPrefix = (computedType === 'keep') ? '↺' : '−'
+  const outLabel = (computedType === 'keep') ? 'Keeping' : 'Removing'
+
+  const inColor = (computedType === 'reject') ? 'text-orange-400' : 'text-green-400'
+  const inColorPreview = (computedType === 'reject') ? 'text-orange-300' : 'text-green-300'
+  const inPrefix = (computedType === 'reject') ? '×' : '+'
+  const inLabel = (computedType === 'reject') ? 'Rejecting' : 'Adding'
+
   // ── Handlers ─────────────────────────────────────────────────────────────
-  const flipMap: Partial<Record<ChangeType, ChangeType>> = {
-    remove: 'keep', keep: 'remove',
-    add: 'reject', reject: 'add',
-  }
-
   function handleFlip() {
-    const next = flipMap[baseType]
-    if (next) setBaseType(next)
+    if (computedType === 'swap') {
+      // Swap polarity: swap the two sides — becomes a "decline" (opposite swap)
+      const prevOut = cardsOut
+      const prevIn = cardsIn
+      setCardsOut(prevIn)
+      setCardsIn(prevOut)
+    } else {
+      const next = FLIP_MAP[baseType]
+      if (next !== baseType) setBaseType(next)
+    }
   }
-
-  const canFlip = baseType !== 'swap'
-  const flipLabel = baseType === 'remove' ? 'Flip to Keep'
-    : baseType === 'keep' ? 'Flip to Remove'
-    : baseType === 'add' ? 'Flip to Reject'
-    : baseType === 'reject' ? 'Flip to Add'
-    : ''
 
   function handleSave() {
     onSave({
@@ -202,126 +219,86 @@ export function UnifiedChangeModal({
   }
   const title = isEditing ? 'Edit Change' : titleMap[computedType]
 
-  // Border accent for anchored types
-  const accentBorder = baseType === 'keep'
-    ? 'border-l-2 border-l-teal-500'
-    : baseType === 'reject'
-    ? 'border-l-2 border-l-orange-500'
-    : ''
+  // Whether to show each card section
+  const showCardsOut = isEditing || cardsOut.length > 0 || computedType === 'swap' || computedType === 'remove' || computedType === 'keep'
+  const showCardsIn = isEditing || cardsIn.length > 0 || computedType === 'swap' || computedType === 'add' || computedType === 'reject'
 
   return (
-    <Modal open={open} onClose={onClose} title={title}>
-      <div className={`space-y-4 ${accentBorder ? `pl-3 ${accentBorder}` : ''}`}>
+    <Modal open={open} onClose={onClose} title={title} accentColor={ACCENT_COLORS[computedType]}>
+      <div className="space-y-4">
         {/* Type indicator + flip button */}
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-500">Type:</span>
           <ChangeTypeBadge type={computedType} />
-          {canFlip && (
-            <FlipButton onClick={handleFlip} label={flipLabel} />
-          )}
+          <button
+            type="button"
+            onClick={handleFlip}
+            className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-slate-700/60 hover:bg-slate-600 text-slate-400 hover:text-white transition-colors"
+            aria-label={flipLabel(computedType)}
+            title={flipLabel(computedType)}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+            </svg>
+          </button>
         </div>
 
-        {/* ── Card lists ──────────────────────────────────────────────────── */}
-        {computedType === 'swap' ? (
-          // Swap: show both sides without flip
-          <>
-            <div className="space-y-1.5">
-              <div className="text-xs font-medium text-slate-400 uppercase tracking-wide">Removing</div>
-              {isEditing ? (
-                <>
-                  <div className="space-y-1">
-                    {cardsOut.map(c => (
-                      <EditableCardRow key={c.name} card={c} colorClass="text-red-400"
-                        onRemove={() => setCardsOut(prev => prev.filter(x => x.name !== c.name))} />
-                    ))}
-                  </div>
-                  <CardSearch label="removal" candidates={availableA} onAdd={c => setCardsOut(prev => [...prev, c])} />
-                </>
-              ) : (
-                <div className="bg-slate-700/50 rounded-lg p-3 space-y-0.5">
-                  {cardsOut.map(c => (
-                    <PreviewableCardRow key={c.name} card={c} colorClass="text-red-300" prefix="−" onPreview={setPreviewCard} />
-                  ))}
-                  {cardsOut.length === 0 && <p className="text-xs text-slate-500 italic">None</p>}
-                </div>
-              )}
-            </div>
-            <div className="space-y-1.5">
-              <div className="text-xs font-medium text-slate-400 uppercase tracking-wide">Adding</div>
-              {isEditing ? (
-                <>
-                  <div className="space-y-1">
-                    {cardsIn.map(c => (
-                      <EditableCardRow key={c.name} card={c} colorClass="text-green-400"
-                        onRemove={() => setCardsIn(prev => prev.filter(x => x.name !== c.name))} />
-                    ))}
-                  </div>
-                  <CardSearch label="addition" candidates={availableB} onAdd={c => setCardsIn(prev => [...prev, c])} />
-                </>
-              ) : (
-                <div className="bg-slate-700/50 rounded-lg p-3 space-y-0.5">
-                  {cardsIn.map(c => (
-                    <PreviewableCardRow key={c.name} card={c} colorClass="text-green-300" prefix="+" onPreview={setPreviewCard} />
-                  ))}
-                  {cardsIn.length === 0 && <p className="text-xs text-slate-500 italic">None</p>}
-                </div>
-              )}
-            </div>
-          </>
-        ) : (baseType === 'remove' || baseType === 'keep') ? (
-          // Cards are in cardsOut — label/color depends on type
+        {/* ── Cards Out (removing / keeping) ─────────────────────────────── */}
+        {showCardsOut && (
           <div className="space-y-1.5">
-            <div className="text-xs font-medium text-slate-400 uppercase tracking-wide">
-              {baseType === 'keep' ? 'Keeping' : 'Removing'}
-            </div>
+            <div className="text-xs font-medium text-slate-400 uppercase tracking-wide">{outLabel}</div>
             {isEditing ? (
               <>
                 <div className="space-y-1">
                   {cardsOut.map(c => (
-                    <EditableCardRow key={c.name} card={c} colorClass={baseType === 'keep' ? 'text-teal-400' : 'text-red-400'}
+                    <EditableCardRow key={c.name} card={c} colorClass={outColor}
                       onRemove={() => setCardsOut(prev => prev.filter(x => x.name !== c.name))} />
                   ))}
                 </div>
-                <CardSearch label={baseType === 'keep' ? 'card to keep' : 'removal'} candidates={availableA} onAdd={c => setCardsOut(prev => [...prev, c])} />
+                <CardSearch label="removal" candidates={availableA} onAdd={c => setCardsOut(prev => [...prev, c])} />
               </>
             ) : (
-              <div className="bg-slate-700/50 rounded-lg p-3 space-y-0.5">
-                {cardsOut.map(c => (
-                  <PreviewableCardRow key={c.name} card={c}
-                    colorClass={baseType === 'keep' ? 'text-teal-300' : 'text-red-300'}
-                    prefix={baseType === 'keep' ? '↺' : '−'}
-                    onPreview={setPreviewCard} />
-                ))}
-                {cardsOut.length === 0 && <p className="text-xs text-slate-500 italic">None</p>}
-              </div>
+              <>
+                <div className="bg-slate-700/50 rounded-lg p-3 space-y-0.5">
+                  {cardsOut.map(c => (
+                    <PreviewableCardRow key={c.name} card={c} colorClass={outColorPreview} prefix={outPrefix} onPreview={setPreviewCard} />
+                  ))}
+                  {cardsOut.length === 0 && <p className="text-xs text-slate-500 italic">None</p>}
+                </div>
+                {allCardsA.length > 0 && (
+                  <CardSearch label="removal" candidates={availableA} onAdd={c => setCardsOut(prev => [...prev, c])} />
+                )}
+              </>
             )}
           </div>
-        ) : (
-          // add or reject — cards are in cardsIn
+        )}
+
+        {/* ── Cards In (adding / rejecting) ──────────────────────────────── */}
+        {showCardsIn && (
           <div className="space-y-1.5">
-            <div className="text-xs font-medium text-slate-400 uppercase tracking-wide">
-              {baseType === 'reject' ? 'Rejecting' : 'Adding'}
-            </div>
+            <div className="text-xs font-medium text-slate-400 uppercase tracking-wide">{inLabel}</div>
             {isEditing ? (
               <>
                 <div className="space-y-1">
                   {cardsIn.map(c => (
-                    <EditableCardRow key={c.name} card={c} colorClass={baseType === 'reject' ? 'text-orange-400' : 'text-green-400'}
+                    <EditableCardRow key={c.name} card={c} colorClass={inColor}
                       onRemove={() => setCardsIn(prev => prev.filter(x => x.name !== c.name))} />
                   ))}
                 </div>
-                <CardSearch label={baseType === 'reject' ? 'card to reject' : 'addition'} candidates={availableB} onAdd={c => setCardsIn(prev => [...prev, c])} />
+                <CardSearch label="addition" candidates={availableB} onAdd={c => setCardsIn(prev => [...prev, c])} />
               </>
             ) : (
-              <div className="bg-slate-700/50 rounded-lg p-3 space-y-0.5">
-                {cardsIn.map(c => (
-                  <PreviewableCardRow key={c.name} card={c}
-                    colorClass={baseType === 'reject' ? 'text-orange-300' : 'text-green-300'}
-                    prefix={baseType === 'reject' ? '×' : '+'}
-                    onPreview={setPreviewCard} />
-                ))}
-                {cardsIn.length === 0 && <p className="text-xs text-slate-500 italic">None</p>}
-              </div>
+              <>
+                <div className="bg-slate-700/50 rounded-lg p-3 space-y-0.5">
+                  {cardsIn.map(c => (
+                    <PreviewableCardRow key={c.name} card={c} colorClass={inColorPreview} prefix={inPrefix} onPreview={setPreviewCard} />
+                  ))}
+                  {cardsIn.length === 0 && <p className="text-xs text-slate-500 italic">None</p>}
+                </div>
+                {allCardsB.length > 0 && (
+                  <CardSearch label="addition" candidates={availableB} onAdd={c => setCardsIn(prev => [...prev, c])} />
+                )}
+              </>
             )}
           </div>
         )}

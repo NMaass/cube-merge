@@ -10,6 +10,7 @@ export interface Identity {
 interface AuthContextValue {
   identity: Identity
   setName: (name: string) => void
+  claimIdentity: (id: string, name: string) => void
 }
 
 const ANON_KEY = 'cube-diff:anon-identity'
@@ -42,8 +43,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
   }
 
+  function claimIdentity(id: string, name: string) {
+    const updated: Identity = { id, displayName: name, photoURL: '' }
+    try { localStorage.setItem(ANON_KEY, JSON.stringify(updated)) } catch { /* ignore */ }
+    setIdentity(updated)
+  }
+
   return (
-    <AuthContext.Provider value={{ identity, setName }}>
+    <AuthContext.Provider value={{ identity, setName, claimIdentity }}>
       {children}
     </AuthContext.Provider>
   )
