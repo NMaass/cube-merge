@@ -20,7 +20,6 @@ import { UnifiedChangeModal, ChangeData } from '../components/changes/UnifiedCha
 import { PassModal } from '../components/diff/PassModal'
 import { SplitChangeModal } from '../components/changes/SplitChangeModal'
 import { ChangeCard } from '../components/changes/ChangeCard'
-import { SwipeableCard } from '../components/changes/SwipeableCard'
 import { useCardImages } from '../hooks/useCardImages'
 import { useSectionNav } from '../hooks/useSectionNav'
 import { groupBySection, sectionLabel, parseSectionNotation, COLOR_ORDER, COLOR_NAMES, COLOR_BG } from '../lib/sorting'
@@ -32,6 +31,7 @@ import {
   LiveChange, Review, Comment, ChangeType, CommentResolution,
 } from '../types/firestore'
 import { Modal } from '../components/ui/Modal'
+import { useToast, ToastContainer } from '../components/ui/Toast'
 
 const COPY_FEEDBACK_DURATION_MS = 2000
 
@@ -47,7 +47,6 @@ function ViewModePanel({
   changes, identity, reviewId,
   highlightedChangeId,
   approvedSectionOpen, setApprovedSectionOpen,
-  onApprove, onUnapprove,
   onAddComment, onSetCommentResolution, onEditComment, onEdit,
   allDiffCards, reviewerNames,
   onOpenColorBreakdown,
@@ -58,8 +57,6 @@ function ViewModePanel({
   highlightedChangeId: string | null
   approvedSectionOpen: boolean
   setApprovedSectionOpen: (open: boolean) => void
-  onApprove: (ch: LiveChange) => void
-  onUnapprove: (ch: LiveChange) => void
   onAddComment: (changeId: string, body: string, res: CommentResolution) => void
   onSetCommentResolution: (changeId: string, commentId: string, res: CommentResolution) => void
   onEditComment: (changeId: string, commentId: string, newBody: string) => void
@@ -132,26 +129,21 @@ function ViewModePanel({
   }
   const approvedChanges = changes.filter(ch => effectivelyApproved(ch)).sort(withinGroupSort)
 
-  function renderChangeCard(change: LiveChange, approved: boolean) {
+  function renderChangeCard(change: LiveChange) {
     return (
-      <SwipeableCard
+      <ChangeCard
         key={change.id}
-        onSwipeRight={() => approved ? onUnapprove(change) : onApprove(change)}
-        isActive={approved}
-      >
-        <ChangeCard
-          change={change}
-          onAddComment={(body, res) => onAddComment(change.id, body, res)}
-          onSetCommentResolution={(commentId, res) => onSetCommentResolution(change.id, commentId, res)}
-          onEditComment={(commentId, newBody) => onEditComment(change.id, commentId, newBody)}
-          onEdit={() => onEdit(change)}
-          isSeen={isSeen(change)}
-          currentUserName={identity.displayName}
-          diffCards={allDiffCards}
-          reviewerNames={reviewerNames}
-          highlighted={highlightedChangeId === change.id}
-        />
-      </SwipeableCard>
+        change={change}
+        onAddComment={(body, res) => onAddComment(change.id, body, res)}
+        onSetCommentResolution={(commentId, res) => onSetCommentResolution(change.id, commentId, res)}
+        onEditComment={(commentId, newBody) => onEditComment(change.id, commentId, newBody)}
+        onEdit={() => onEdit(change)}
+        isSeen={isSeen(change)}
+        currentUserName={identity.displayName}
+        diffCards={allDiffCards}
+        reviewerNames={reviewerNames}
+        highlighted={highlightedChangeId === change.id}
+      />
     )
   }
 
@@ -202,7 +194,7 @@ function ViewModePanel({
       {/* Changes grouped by type (scroll targets for nav, no visible headers) */}
       {grouped.map(g => (
           <div key={g.type} id={`view-section-${g.type}`} className="space-y-2">
-            {g.changes.map(ch => renderChangeCard(ch, false))}
+            {g.changes.map(ch => renderChangeCard(ch))}
           </div>
       ))}
 
@@ -225,7 +217,7 @@ function ViewModePanel({
           </button>
           {approvedSectionOpen && (
             <div className="space-y-3 mt-3">
-              {approvedChanges.map(ch => renderChangeCard(ch, true))}
+              {approvedChanges.map(ch => renderChangeCard(ch))}
             </div>
           )}
         </div>
@@ -290,6 +282,7 @@ function ReviewWorkspace({
   const [approvedSectionOpen, setApprovedSectionOpen] = useState(false)
   const [resolveConfirmChange, setResolveConfirmChange] = useState<LiveChange | null>(null)
   const [identityMap, setIdentityMap] = useState<Record<string, { name: string; lastSeen?: Timestamp }>>({})
+  const toast = useToast()
 
 
   const diffData = review.rawData
@@ -340,6 +333,8 @@ function ReviewWorkspace({
         approvedBy: arrayUnion(identity.id),
         seenBy: [identity.id],
       })
+      const label = ch.cardsOut[0]?.name || ch.cardsIn[0]?.name || 'Change'
+      toast.show(`Approved "${label}"`, () => handleUnapprove(ch))
     } catch (e) {
       showActionError('Could not approve. Please try again.', e)
     }
@@ -1385,8 +1380,6 @@ function ReviewWorkspace({
             highlightedChangeId={highlightedChangeId}
             approvedSectionOpen={approvedSectionOpen}
             setApprovedSectionOpen={setApprovedSectionOpen}
-            onApprove={handleApprove}
-            onUnapprove={handleUnapprove}
             onAddComment={(changeId, body, res) => handleAddComment(changeId, body, res)}
             onSetCommentResolution={(changeId, commentId, res) => handleSetCommentResolution(changeId, commentId, res)}
             onEditComment={(changeId, commentId, newBody) => handleEditComment(changeId, commentId, newBody)}
@@ -1413,6 +1406,9 @@ function ReviewWorkspace({
             setSplittingChange(editingChange)
             setEditingChange(null)
           } : undefined}
+          onApprove={editingChange ? () => handleApprove(editingChange) : undefined}
+          onUnapprove={editingChange ? () => handleUnapprove(editingChange) : undefined}
+          isApproved={editingChange ? isApproved(editingChange) : false}
           diffCards={allDiffCards}
           reviewerNames={reviewerNames}
           onClearSelection={clearSelection}
@@ -1641,6 +1637,7 @@ function ReviewWorkspace({
           </div>
         </Modal>
       </div>
+      <ToastContainer toasts={toast.toasts} onDismiss={toast.dismiss} />
     </>
   )
 }

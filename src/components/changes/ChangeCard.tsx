@@ -64,13 +64,13 @@ export function ChangeCard({ change, onAddComment, onSetCommentResolution, onEdi
         {onEdit && (
           <button
             onClick={onEdit}
-            className="touch-target inline-flex items-center justify-center h-7 w-7 sm:w-auto sm:px-2 rounded-md text-slate-500 hover:text-amber-400 hover:bg-slate-700/60 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500 active:scale-[0.97]"
+            className="touch-target inline-flex items-center justify-center gap-1 h-7 px-2 rounded-md bg-slate-700/60 border border-slate-600/50 text-slate-300 hover:text-amber-400 hover:border-amber-500/40 hover:bg-slate-700 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500 active:scale-[0.97] text-xs font-medium"
             aria-label="Edit change"
           >
             <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
             </svg>
-            <span className="hidden sm:inline ml-1">Edit</span>
+            <span>Edit</span>
           </button>
         )}
       </div>
