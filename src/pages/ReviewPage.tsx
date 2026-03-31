@@ -24,7 +24,6 @@ import { ChangeCard } from '../components/changes/ChangeCard'
 import { useCardImages } from '../hooks/useCardImages'
 import { useSectionNav } from '../hooks/useSectionNav'
 import { groupBySection, sectionLabel, parseSectionNotation, COLOR_ORDER, COLOR_NAMES, COLOR_BG } from '../lib/sorting'
-import { ColorCategory } from '../types/cube'
 import { computeChangeType } from '../lib/changes'
 import { recordCubeCards } from '../lib/cubeCards'
 import { CubeCard } from '../types/cube'
@@ -32,6 +31,7 @@ import {
   LiveChange, Review, Comment, ChangeType, CommentResolution,
 } from '../types/firestore'
 import { Modal } from '../components/ui/Modal'
+import { ManaSymbol, ManaSymbols } from '../components/cards/ManaSymbol'
 import { useToast, ToastContainer } from '../components/ui/Toast'
 
 const COPY_FEEDBACK_DURATION_MS = 2000
@@ -468,20 +468,6 @@ function ReviewWorkspace({
     : viewCardSearch.trim() ? '0/0' : undefined
 
   // Check if sections ahead of the current one have unseen or unresolved changes
-  const viewHasItemsAhead = useMemo(() => {
-    if (viewSections.length === 0 || viewSectionIndex >= viewSections.length - 1) return false
-    for (let i = viewSectionIndex + 1; i < viewSections.length; i++) {
-      const sectionKey = viewSections[i].key
-      if (sectionKey === 'approved') continue
-      const sectionChanges = changes.filter(ch => {
-        const dt = computeChangeType(ch.cardsOut, ch.cardsIn, ch.type)
-        return dt === sectionKey
-      })
-      if (sectionChanges.some(ch => ch.unresolved || !(ch.seenBy?.includes(identity.id)))) return true
-    }
-    return false
-  }, [viewSections, viewSectionIndex, changes, identity.id])
-
   // Subscribe to changes subcollection
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -1106,7 +1092,7 @@ function ReviewWorkspace({
           const removed = outByColor.get(k) ?? []
           allMultiIn.push(...added)
           allMultiOut.push(...removed)
-          const pairName = pair.split('').map(c => COLOR_NAMES[c as ColorCategory]?.[0] ?? c).join('')
+          const pairName = pair // already WUBRG codes, e.g. "WU", "BG"
           subRows.push({ key: k, name: pairName, bg: COLOR_BG.M, added, removed, net: added.length - removed.length, indent: true })
         }
 
@@ -1225,7 +1211,6 @@ function ReviewWorkspace({
               onCardSearch={handleViewCardSearch}
               searchMatchInfo={viewSearchMatchInfo}
               placeholder="Type or search cards…"
-              hasItemsAhead={viewHasItemsAhead}
             />
           )}
 
@@ -1551,15 +1536,13 @@ function ReviewWorkspace({
                   {colorBreakdown.map(row => (
                     <Fragment key={row.key}>
                       {row.indent ? (
-                        <div className="w-3 h-3 shrink-0" />
+                        <div className="pl-2 shrink-0">
+                          <ManaSymbols symbols={row.key.slice(2)} />
+                        </div>
                       ) : (
-                        <div
-                          className="w-3 h-3 rounded-sm shrink-0"
-                          style={{ backgroundColor: row.bg }}
-                          title={row.name}
-                        />
+                        <ManaSymbol symbol={row.key} />
                       )}
-                      <div className={`${row.indent ? 'text-slate-500 text-xs pl-1' : 'text-slate-300 font-medium'}`}>{row.name}</div>
+                      <div className={`${row.indent ? 'text-slate-500 text-xs' : 'text-slate-300 font-medium'}`}>{row.indent ? '' : row.name}</div>
                       <div className="text-green-400 text-right tabular-nums font-mono text-xs">
                         {row.added.length > 0 ? `+${row.added.length}` : ''}
                       </div>
@@ -1580,7 +1563,10 @@ function ReviewWorkspace({
                   <div className="mt-2 space-y-2 text-xs">
                     {colorBreakdown.filter(r => !r.indent).map(row => (
                       <div key={row.key}>
-                        <div className="font-medium text-slate-400 mb-0.5" style={{ color: row.bg }}>{row.name}</div>
+                        <div className="font-medium text-slate-400 mb-0.5 flex items-center gap-1.5">
+                          <ManaSymbol symbol={row.key} />
+                          {row.name}
+                        </div>
                         {row.added.length > 0 && (
                           <div className="text-green-400/80 ml-2">{row.added.map(n => `+ ${n}`).join(', ')}</div>
                         )}

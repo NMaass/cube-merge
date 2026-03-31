@@ -16,14 +16,12 @@ interface SectionNavProps {
   searchMatchInfo?: string
   /** Placeholder for the input field */
   placeholder?: string
-  /** When true, visually highlights the next button to draw attention */
-  hasItemsAhead?: boolean
 }
 
 export function SectionNav({
   currentIndex, total, currentLabel,
   onPrev, onNext, onGoTo, findSection, disabled, sectionComplete,
-  onCardSearch, searchMatchInfo, placeholder, hasItemsAhead,
+  onCardSearch, searchMatchInfo, placeholder,
 }: SectionNavProps) {
   const [value, setValue] = useState(currentLabel)
   const [editing, setEditing] = useState(false)
@@ -126,13 +124,10 @@ export function SectionNav({
         disabled={disabled || currentIndex === total - 1}
         title={isSearching ? 'Next match' : 'Next section (N)'}
         aria-label={isSearching ? 'Next match' : 'Next section'}
-        className={`${btnClass} relative`}
+        className={btnClass}
       >
         <span aria-hidden="true">→</span>
         <span className="sr-only">Next</span>
-        {hasItemsAhead && !isSearching && !(disabled || currentIndex === total - 1) && (
-          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-500" />
-        )}
       </button>
     </div>
   )

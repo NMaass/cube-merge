@@ -1,5 +1,6 @@
 import { ColorCategory } from '../../types/cube'
 import { COLOR_BG, COLOR_NAMES } from '../../lib/sorting'
+import { ManaSymbol } from '../cards/ManaSymbol'
 
 interface SectionHeaderProps {
   colorCategory: ColorCategory
@@ -17,7 +18,8 @@ export function SectionHeader({ colorCategory, cmc, countA, countB }: SectionHea
       className="flex items-center justify-between px-3 py-1.5 rounded-t-lg text-sm font-semibold sticky top-0 z-10 text-slate-800 min-h-8"
       style={{ backgroundColor: bg }}
     >
-      <span>
+      <span className="flex items-center gap-1.5">
+        <ManaSymbol symbol={colorCategory} />
         {COLOR_NAMES[colorCategory]}{!isLand && ` — ${cmc} CMC`}
       </span>
       <span className="text-xs opacity-70">
