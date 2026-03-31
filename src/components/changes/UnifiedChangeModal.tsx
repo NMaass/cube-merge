@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { AutocompleteTextarea } from '../ui/AutocompleteTextarea'
@@ -8,6 +8,7 @@ import { ChangeTypeBadge } from './ChangeTypeBadge'
 import { useCardPreview } from '../../hooks/useCardPreview'
 import { FullscreenCardModal } from '../cards/FullscreenCardModal'
 import { CardSearch } from './CardSearch'
+import { CheckIcon } from '../ui/Icons'
 import { CubeCard } from '../../types/cube'
 import { Change, Comment, ChangeType } from '../../types/firestore'
 import { computeChangeType, isNegativePolarity } from '../../lib/changes'
@@ -122,10 +123,14 @@ export function UnifiedChangeModal({
   const computedType = computeChangeType(cardsOut, cardsIn, baseType)
   const negative = isNegativePolarity(computedType)
 
-  const outNames = new Set(cardsOut.map(c => c.name))
-  const inNames = new Set(cardsIn.map(c => c.name))
-  const availableA = allCardsA.filter(c => !outNames.has(c.name))
-  const availableB = allCardsB.filter(c => !inNames.has(c.name))
+  const availableA = useMemo(() => {
+    const outNames = new Set(cardsOut.map(c => c.name))
+    return allCardsA.filter(c => !outNames.has(c.name))
+  }, [cardsOut, allCardsA])
+  const availableB = useMemo(() => {
+    const inNames = new Set(cardsIn.map(c => c.name))
+    return allCardsB.filter(c => !inNames.has(c.name))
+  }, [cardsIn, allCardsB])
 
   // Colors driven by polarity
   const outColor = negative ? 'text-teal-400' : 'text-red-400'
@@ -274,30 +279,27 @@ export function UnifiedChangeModal({
           </button>
         )}
 
-        {/* Footer — Delete separated from Save/Approve for safety */}
-        <div className="flex items-center gap-2 pt-1 border-t border-slate-700/40">
+        {/* Footer */}
+        <div className="flex items-center gap-2 pt-3 border-t border-slate-700/40">
           {isEditing && onDelete && (
-            <Button variant="danger" size="sm" onClick={() => { onDelete(existingChange!.id); onClose() }}>
-              Delete
-            </Button>
+            <>
+              <Button variant="danger" size="sm" onClick={() => { onDelete(existingChange!.id); onClose() }}>
+                Delete
+              </Button>
+              <div className="w-px h-5 bg-slate-700/60" />
+            </>
           )}
 
           <div className="flex items-center gap-2 ml-auto">
-            {/* Approve/unapprove toggle (edit mode only) */}
             {isEditing && onApprove && (
-              <button
+              <Button
+                variant={isApproved ? 'approved' : 'approve'}
+                size="sm"
                 onClick={handleApprove}
-                className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium transition-colors ${
-                  isApproved
-                    ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-                    : 'bg-slate-700 text-slate-400 hover:text-green-400 hover:bg-slate-700/80'
-                }`}
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+                <CheckIcon className="w-3.5 h-3.5 mr-1.5" />
                 {isApproved ? 'Approved' : 'Approve'}
-              </button>
+              </Button>
             )}
 
             <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>

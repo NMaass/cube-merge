@@ -13,6 +13,7 @@ import { EditModeProvider, useEditMode } from '../context/EditModeContext'
 import { Spinner } from '../components/ui/Spinner'
 import { Button } from '../components/ui/Button'
 import { Notice } from '../components/ui/Notice'
+import { CheckIcon, ClipboardIcon } from '../components/ui/Icons'
 import { SectionNav } from '../components/diff/SectionNav'
 import { DiffList } from '../components/diff/DiffList'
 import { ModeToggle } from '../components/diff/ModeToggle'
@@ -1286,8 +1287,8 @@ function ReviewWorkspace({
               className={`hidden sm:inline-flex ${linkCopyPop ? 'copy-pop' : ''}`}
             >
               {linkCopied
-                ? <><svg className="w-3.5 h-3.5 text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg><span className="ml-1">Copied!</span></>
-                : <><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg><span className="ml-1">Copy Link</span></>
+                ? <><CheckIcon className="w-3.5 h-3.5 text-green-300" /><span className="ml-1">Copied!</span></>
+                : <><ClipboardIcon /><span className="ml-1">Copy Link</span></>
               }
             </Button>
             {/* Share button — mobile only (combines Export + Copy Link) */}
@@ -1300,8 +1301,8 @@ function ReviewWorkspace({
                 className={`touch-target !w-8 !px-0 ${linkCopyPop ? 'copy-pop' : ''}`}
               >
                 {linkCopied
-                  ? <svg className="w-3.5 h-3.5 text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  : <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                  ? <CheckIcon className="w-3.5 h-3.5 text-green-300" />
+                  : <ClipboardIcon />
                 }
               </Button>
               {shareMenuOpen && (
