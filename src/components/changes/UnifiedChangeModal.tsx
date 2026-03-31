@@ -5,6 +5,7 @@ import { AutocompleteTextarea } from '../ui/AutocompleteTextarea'
 import { ReviewerNameBadge } from '../ui/ReviewerNameBadge'
 import { UnresolvedCheckbox } from '../ui/UnresolvedCheckbox'
 import { ChangeTypeBadge } from './ChangeTypeBadge'
+import { ActionMenu, ActionMenuItem } from '../ui/ActionMenu'
 import { useCardPreview } from '../../hooks/useCardPreview'
 import { FullscreenCardModal } from '../cards/FullscreenCardModal'
 import { CardSearch } from './CardSearch'
@@ -179,23 +180,67 @@ export function UnifiedChangeModal({
   const showIn = isEditing || cardsIn.length > 0
   const showEmptyState = !isEditing && !showOut && !showIn
 
+  // ── Action menu items ──────────────────────────────────────────────────────
+  const actionMenuItems = useMemo(() => {
+    const items: ActionMenuItem[] = []
+
+    // Approve / Unapprove (edit mode only)
+    if (isEditing && onApprove) {
+      items.push({
+        label: isApproved ? 'Remove approval' : 'Approve change',
+        icon: <CheckIcon className="w-4 h-4" />,
+        onClick: handleApprove,
+      })
+    }
+
+    // Flip polarity
+    items.push({
+      label: `Flip to ${FLIP_TARGET[computedType]}`,
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+        </svg>
+      ),
+      onClick: handleFlip,
+    })
+
+    // Split (edit mode, 2+ cards)
+    if (isEditing && onSplit && (cardsOut.length + cardsIn.length >= 2)) {
+      items.push({
+        label: 'Split into two changes',
+        icon: (
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h4m0 0V3m0 4l-4 4m8-4h-4m0 0V3m0 4l4 4M8 17H4m4 0v4m0-4l-4-4m12 4h4m-4 0v4m0-4l4-4" />
+          </svg>
+        ),
+        onClick: () => { onClose(); onSplit() },
+      })
+    }
+
+    // Delete (always last, destructive)
+    if (isEditing && onDelete) {
+      items.push({
+        label: 'Delete change',
+        icon: (
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        ),
+        onClick: () => { onDelete(existingChange!.id); onClose() },
+        destructive: true,
+      })
+    }
+
+    return items
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing, isApproved, computedType, cardsOut.length, cardsIn.length])
+
   return (
     <Modal open={open} onClose={onClose} title={title} accentColor={ACCENT_COLORS[computedType]}>
       <div className="space-y-3">
-        {/* Type badge + flip */}
+        {/* Type badge */}
         <div className="flex items-center gap-2">
           <ChangeTypeBadge type={computedType} />
-          <button
-            type="button"
-            onClick={handleFlip}
-            className="p-1 rounded text-slate-600 hover:text-slate-300 hover:bg-slate-700/60 transition-colors"
-            title={`Flip to ${FLIP_TARGET[computedType]}`}
-            aria-label={`Flip to ${FLIP_TARGET[computedType]}`}
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-            </svg>
-          </button>
           {!isEditing && <span className="ml-auto"><ReviewerNameBadge /></span>}
         </div>
 
@@ -267,46 +312,11 @@ export function UnifiedChangeModal({
         </div>
 
         {/* Footer */}
-        <div className="pt-3 border-t border-slate-700/40 space-y-2">
-          {/* Primary actions */}
-          <div className="flex items-center gap-2">
-            {isEditing && onApprove && (
-              <Button
-                variant={isApproved ? 'approved' : 'approve'}
-                size="sm"
-                onClick={handleApprove}
-              >
-                <CheckIcon className="w-3.5 h-3.5 mr-1.5" />
-                {isApproved ? 'Approved' : 'Approve'}
-              </Button>
-            )}
-            <div className="ml-auto flex items-center gap-2">
-              <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
-              <Button size="sm" onClick={handleSave} disabled={!hasCards}>Save</Button>
-            </div>
+        <div className="flex items-center gap-2 pt-3 border-t border-slate-700/40">
+          <ActionMenu items={actionMenuItems} />
+          <div className="ml-auto">
+            <Button size="sm" onClick={handleSave} disabled={!hasCards}>Save</Button>
           </div>
-
-          {/* Secondary actions */}
-          {isEditing && (onSplit || onDelete) && (
-            <div className="flex items-center gap-3 text-xs">
-              {onSplit && (cardsOut.length + cardsIn.length >= 2) && (
-                <button
-                  onClick={() => { onClose(); onSplit() }}
-                  className="text-slate-500 hover:text-slate-300 transition-colors"
-                >
-                  Split into two
-                </button>
-              )}
-              {onDelete && (
-                <button
-                  onClick={() => { onDelete(existingChange!.id); onClose() }}
-                  className="text-slate-500 hover:text-red-400 transition-colors"
-                >
-                  Delete
-                </button>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
