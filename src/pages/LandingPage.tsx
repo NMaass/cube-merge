@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from '../lib/router'
 import { BuildInfoDisplay } from '../components/ui/BuildInfoDisplay'
 import { Helmet } from 'react-helmet-async'
@@ -6,8 +6,8 @@ import { nanoid } from 'nanoid'
 import { Button } from '../components/ui/Button'
 import { Notice } from '../components/ui/Notice'
 import { Spinner } from '../components/ui/Spinner'
-import { parseCubeCobraId, parseCompareUrl, fetchCubeCobraList, computeDiff } from '../lib/cubecobra'
-import { getKnownCubeIds } from '../lib/cubeCards'
+import { parseCubeCobraId, parseCompareUrl, fetchCubeCobraCube, computeDiff } from '../lib/cubecobra'
+import { getKnownCubeIds, getLegacyKnownCubeRefs, persistKnownCube, resolveKnownCubeReference, seedKnownCubes } from '../lib/cubeCards'
 import { CubeCard } from '../types/cube'
 
 type PageState = 'form' | 'loading' | 'cors_fallback' | 'creating'
@@ -64,7 +64,34 @@ export default function LandingPage() {
   const [corsIdB, setCorsIdB] = useState('')
   const [manualJsonA, setManualJsonA] = useState('')
   const [manualJsonB, setManualJsonB] = useState('')
-  const knownIds = getKnownCubeIds()
+  const [knownIds, setKnownIds] = useState<string[]>(() => getKnownCubeIds())
+
+  useEffect(() => {
+    let cancelled = false
+
+    seedKnownCubes()
+    setKnownIds(getKnownCubeIds())
+
+    ;(async () => {
+      const legacyRefs = getLegacyKnownCubeRefs()
+      if (legacyRefs.length === 0) return
+
+      await Promise.all(legacyRefs.map(async ref => {
+        try {
+          const cube = await fetchCubeCobraCube(ref)
+          persistKnownCube(cube.meta)
+        } catch {
+          // Leave legacy refs as-is if CubeCobra lookup fails.
+        }
+      }))
+
+      if (!cancelled) setKnownIds(getKnownCubeIds())
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   function handleInputA(value: string) {
     setValidationError(null)
@@ -109,8 +136,10 @@ export default function LandingPage() {
   }
 
   async function handleStart(overrideA?: string, overrideB?: string) {
-    const idA = parseCubeCobraId((overrideA ?? cubeAInput).trim())
-    const idB = parseCubeCobraId((overrideB ?? cubeBInput).trim())
+    const rawA = parseCubeCobraId((overrideA ?? cubeAInput).trim())
+    const rawB = parseCubeCobraId((overrideB ?? cubeBInput).trim())
+    const idA = resolveKnownCubeReference(rawA) || rawA
+    const idB = resolveKnownCubeReference(rawB) || rawB
     if (!idA) { setValidationError('Cube A ID is required'); return }
     if (!idB) { setValidationError('Cube B ID is required'); return }
     if (idA === idB) { setValidationError('Cube A and Cube B must be different'); return }
@@ -121,11 +150,14 @@ export default function LandingPage() {
 
     let diff: { onlyA: CubeCard[]; onlyB: CubeCard[] }
     try {
-      const [cardsA, cardsB] = await Promise.all([
-        fetchCubeCobraList(idA),
-        fetchCubeCobraList(idB),
+      const [cubeA, cubeB] = await Promise.all([
+        fetchCubeCobraCube(idA),
+        fetchCubeCobraCube(idB),
       ])
-      diff = computeDiff(cardsA, cardsB)
+      persistKnownCube(cubeA.meta)
+      persistKnownCube(cubeB.meta)
+      setKnownIds(getKnownCubeIds())
+      diff = computeDiff(cubeA.cards, cubeB.cards)
     } catch (e) {
       const msg = e instanceof Error ? e.message : ''
       if (msg === 'CORS_BLOCKED') {

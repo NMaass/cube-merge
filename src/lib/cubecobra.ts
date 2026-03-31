@@ -20,6 +20,14 @@ interface CubeCobraCard {
   mana_cost?: string
 }
 
+export interface CubeCobraMeta {
+  id: string | null
+  shortId: string | null
+  name: string | null
+  requestedRef: string
+  canonicalRef: string
+}
+
 function parseCubeCobraCard(card: CubeCobraCard): CubeCard | null {
   const details = card.details
   if (!details && !card.name) return null
@@ -42,6 +50,31 @@ function parseCubeCobraCard(card: CubeCobraCard): CubeCard | null {
     manaCost: details?.mana_cost || card.mana_cost,
     type,
     oracleId: details?.oracle_id,
+  }
+}
+
+function parseCubeCobraMeta(data: unknown, requestedRef: string): CubeCobraMeta {
+  if (!data || typeof data !== 'object') {
+    return {
+      id: null,
+      shortId: null,
+      name: null,
+      requestedRef,
+      canonicalRef: requestedRef,
+    }
+  }
+
+  const obj = data as Record<string, unknown>
+  const id = typeof obj.id === 'string' ? obj.id : null
+  const shortId = typeof obj.shortId === 'string' ? obj.shortId : null
+  const name = typeof obj.name === 'string' ? obj.name : null
+
+  return {
+    id,
+    shortId,
+    name,
+    requestedRef,
+    canonicalRef: shortId || id || requestedRef,
   }
 }
 
@@ -89,7 +122,7 @@ export function parseCompareUrl(input: string): [string, string] | null {
   return m ? [m[1], m[2]] : null
 }
 
-export async function fetchCubeCobraList(cubeId: string): Promise<CubeCard[]> {
+export async function fetchCubeCobraCube(cubeId: string): Promise<{ cards: CubeCard[]; meta: CubeCobraMeta }> {
   const endpoints = [
     `${CUBECOBRA_BASE}/cube/api/cubeJSON/${cubeId}`,
     `${CUBECOBRA_BASE}/cube/api/cardnames/${cubeId}`,
@@ -127,19 +160,27 @@ export async function fetchCubeCobraList(cubeId: string): Promise<CubeCard[]> {
 
       // String array (cardnames endpoint)
       if (typeof raw[0] === 'string') {
-        return (raw as string[]).map(name => ({
-          name,
-          colorCategory: 'C' as ColorCategory,
-          cmc: 0,
-          colors: [],
-        }))
+        return {
+          cards: (raw as string[]).map(name => ({
+            name,
+            colorCategory: 'C' as ColorCategory,
+            cmc: 0,
+            colors: [],
+          })),
+          meta: parseCubeCobraMeta(data, cubeId),
+        }
       }
 
       const cards = (raw as CubeCobraCard[])
         .map(parseCubeCobraCard)
         .filter((c): c is CubeCard => c !== null)
 
-      if (cards.length > 0) return cards
+      if (cards.length > 0) {
+        return {
+          cards,
+          meta: parseCubeCobraMeta(data, cubeId),
+        }
+      }
     } catch (e) {
       if (import.meta.env.DEV) console.warn(`[CubeCobra] fetch failed for ${url}:`, e)
     }
@@ -148,6 +189,11 @@ export async function fetchCubeCobraList(cubeId: string): Promise<CubeCard[]> {
   // If we got any HTTP response at all, the server is reachable — the cube ID is bad.
   // Only throw CORS_BLOCKED when every request failed at the network level.
   throw new Error(gotAnyResponse ? 'CUBE_NOT_FOUND' : 'CORS_BLOCKED')
+}
+
+export async function fetchCubeCobraList(cubeId: string): Promise<CubeCard[]> {
+  const { cards } = await fetchCubeCobraCube(cubeId)
+  return cards
 }
 
 export function computeDiff(
