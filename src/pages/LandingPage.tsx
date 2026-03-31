@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from '../lib/router'
 import { BuildInfoDisplay } from '../components/ui/BuildInfoDisplay'
 import { Helmet } from 'react-helmet-async'
@@ -7,10 +7,164 @@ import { Button } from '../components/ui/Button'
 import { Notice } from '../components/ui/Notice'
 import { Spinner } from '../components/ui/Spinner'
 import { parseCubeCobraId, parseCompareUrl, fetchCubeCobraCube, computeDiff } from '../lib/cubecobra'
-import { getKnownCubeIds, getLegacyKnownCubeRefs, persistKnownCube, resolveKnownCubeReference, seedKnownCubes } from '../lib/cubeCards'
+import { getKnownCubeEntries, getLegacyKnownCubeRefs, KnownCubeEntry, persistKnownCube, resolveKnownCubeReference, seedKnownCubes } from '../lib/cubeCards'
 import { CubeCard } from '../types/cube'
 
 type PageState = 'form' | 'loading' | 'cors_fallback' | 'creating'
+type ActiveField = 'a' | 'b' | null
+
+function normalizeSearch(value: string): string {
+  return value.trim().toLowerCase()
+}
+
+function rankCubeEntry(entry: KnownCubeEntry, query: string): number | null {
+  const q = normalizeSearch(query)
+  if (!q) return null
+
+  const aliases = [entry.name, entry.shortId, entry.id, entry.canonicalRef, ...entry.aliases]
+    .filter((value): value is string => !!value)
+    .map(value => value.trim())
+
+  let best: number | null = null
+  for (const alias of aliases) {
+    const normalized = normalizeSearch(alias)
+    if (normalized === q) best = best === null ? 0 : Math.min(best, 0)
+    else if (normalized.startsWith(q)) best = best === null ? 1 : Math.min(best, 1)
+    else if (normalized.includes(q)) best = best === null ? 2 : Math.min(best, 2)
+  }
+
+  return best
+}
+
+function formatCubeLabel(entry: KnownCubeEntry): string {
+  return entry.name || entry.shortId || entry.canonicalRef
+}
+
+function formatCubeSecondary(entry: KnownCubeEntry): string {
+  const secondary = [entry.shortId, entry.id].filter(Boolean)
+  return secondary.join(' · ')
+}
+
+function CubeInput({
+  id,
+  label,
+  accentClass,
+  helper,
+  value,
+  onChange,
+  suggestions,
+  activeIndex,
+  onActivate,
+  onSelect,
+  onMove,
+  onSubmit,
+}: {
+  id: string
+  label: string
+  accentClass: string
+  helper: string
+  value: string
+  onChange: (value: string) => void
+  suggestions: KnownCubeEntry[]
+  activeIndex: number
+  onActivate: () => void
+  onSelect: (entry: KnownCubeEntry) => void
+  onMove: (delta: number) => void
+  onSubmit: () => void
+}) {
+  const menuId = `${id}-suggestions`
+  const showSuggestions = suggestions.length > 0
+  const blurTimeoutRef = useRef<number | null>(null)
+
+  useEffect(() => () => {
+    if (blurTimeoutRef.current !== null) window.clearTimeout(blurTimeoutRef.current)
+  }, [])
+
+  return (
+    <div className="space-y-1.5">
+      <label htmlFor={id} className="block text-sm font-medium text-slate-300">
+        <span className={`inline-block w-2 h-2 rounded-sm ${accentClass} mr-1.5 mb-0.5 align-middle`} aria-hidden="true" />
+        {label} <span className="text-slate-500 font-normal">({helper})</span>
+      </label>
+      <div className="relative">
+        <input
+          id={id}
+          type="text"
+          placeholder="Cube name, ID, URL, or compare URL"
+          value={value}
+          onFocus={onActivate}
+          onBlur={() => {
+            blurTimeoutRef.current = window.setTimeout(() => onMove(-999), 120)
+          }}
+          onChange={e => {
+            if (blurTimeoutRef.current !== null) {
+              window.clearTimeout(blurTimeoutRef.current)
+              blurTimeoutRef.current = null
+            }
+            onChange(e.target.value)
+            onActivate()
+          }}
+          onKeyDown={e => {
+            if (e.key === 'ArrowDown' && showSuggestions) { e.preventDefault(); onMove(1); return }
+            if (e.key === 'ArrowUp' && showSuggestions) { e.preventDefault(); onMove(-1); return }
+            if (e.key === 'Enter' && showSuggestions && activeIndex >= 0) {
+              e.preventDefault()
+              onSelect(suggestions[activeIndex])
+              return
+            }
+            if (e.key === 'Escape') { onMove(-999); return }
+            if (e.key === 'Enter') onSubmit()
+          }}
+          autoComplete="off"
+          role="combobox"
+          aria-expanded={showSuggestions}
+          aria-controls={showSuggestions ? menuId : undefined}
+          aria-activedescendant={showSuggestions && activeIndex >= 0 ? `${menuId}-${activeIndex}` : undefined}
+          aria-autocomplete="list"
+          className="w-full bg-slate-700/60 border border-slate-600 rounded-lg px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+        />
+        {showSuggestions && (
+          <div
+            id={menuId}
+            role="listbox"
+            className="absolute z-20 mt-2 w-full overflow-hidden rounded-xl border border-slate-600 bg-slate-850 shadow-2xl shadow-black/35"
+          >
+            <div className="max-h-72 overflow-y-auto py-1">
+              {suggestions.map((entry, index) => {
+                const primary = formatCubeLabel(entry)
+                const secondary = formatCubeSecondary(entry)
+
+                return (
+                  <button
+                    key={`${entry.canonicalRef}-${index}`}
+                    id={`${menuId}-${index}`}
+                    type="button"
+                    role="option"
+                    aria-selected={index === activeIndex}
+                    className={`w-full px-3 py-2 text-left transition-colors ${index === activeIndex ? 'bg-amber-500/15' : 'hover:bg-slate-700/70'}`}
+                    onMouseDown={e => {
+                      e.preventDefault()
+                      if (blurTimeoutRef.current !== null) {
+                        window.clearTimeout(blurTimeoutRef.current)
+                        blurTimeoutRef.current = null
+                      }
+                      onSelect(entry)
+                    }}
+                  >
+                    <div className="truncate text-sm font-medium text-slate-100">{primary}</div>
+                    {secondary && (
+                      <div className="truncate text-xs text-slate-400">{secondary}</div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 function cleanForFirestore(obj: unknown): unknown {
   if (obj === undefined || obj === null) return null
@@ -64,13 +218,15 @@ export default function LandingPage() {
   const [corsIdB, setCorsIdB] = useState('')
   const [manualJsonA, setManualJsonA] = useState('')
   const [manualJsonB, setManualJsonB] = useState('')
-  const [knownIds, setKnownIds] = useState<string[]>(() => getKnownCubeIds())
+  const [knownEntries, setKnownEntries] = useState<KnownCubeEntry[]>(() => getKnownCubeEntries())
+  const [activeField, setActiveField] = useState<ActiveField>(null)
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1)
 
   useEffect(() => {
     let cancelled = false
 
     seedKnownCubes()
-    setKnownIds(getKnownCubeIds())
+    setKnownEntries(getKnownCubeEntries())
 
     ;(async () => {
       const legacyRefs = getLegacyKnownCubeRefs()
@@ -85,7 +241,7 @@ export default function LandingPage() {
         }
       }))
 
-      if (!cancelled) setKnownIds(getKnownCubeIds())
+      if (!cancelled) setKnownEntries(getKnownCubeEntries())
     })()
 
     return () => {
@@ -156,7 +312,7 @@ export default function LandingPage() {
       ])
       persistKnownCube(cubeA.meta)
       persistKnownCube(cubeB.meta)
-      setKnownIds(getKnownCubeIds())
+      setKnownEntries(getKnownCubeEntries())
       diff = computeDiff(cubeA.cards, cubeB.cards)
     } catch (e) {
       const msg = e instanceof Error ? e.message : ''
@@ -221,6 +377,49 @@ export default function LandingPage() {
 
   const [showBuildDetails, setShowBuildDetails] = useState(false)
   const canStart = cubeAInput.trim().length > 0 && cubeBInput.trim().length > 0
+  const activeQuery = activeField === 'a' ? cubeAInput : activeField === 'b' ? cubeBInput : ''
+  const suggestions = useMemo(() => {
+    const query = activeQuery.trim()
+    if (query.length < 1) return []
+
+    return knownEntries
+      .map(entry => ({ entry, rank: rankCubeEntry(entry, query) }))
+      .filter((item): item is { entry: KnownCubeEntry; rank: number } => item.rank !== null)
+      .sort((a, b) =>
+        a.rank - b.rank ||
+        formatCubeLabel(a.entry).localeCompare(formatCubeLabel(b.entry))
+      )
+      .slice(0, 6)
+      .map(item => item.entry)
+  }, [activeQuery, knownEntries])
+
+  useEffect(() => {
+    setActiveSuggestionIndex(suggestions.length > 0 ? 0 : -1)
+  }, [activeField, activeQuery, suggestions.length])
+
+  function dismissSuggestions() {
+    setActiveField(null)
+    setActiveSuggestionIndex(-1)
+  }
+
+  function moveSuggestion(delta: number) {
+    if (delta === -999) {
+      dismissSuggestions()
+      return
+    }
+    if (suggestions.length === 0) return
+    setActiveSuggestionIndex(current => {
+      const base = current < 0 ? 0 : current
+      return (base + delta + suggestions.length) % suggestions.length
+    })
+  }
+
+  function selectSuggestion(entry: KnownCubeEntry) {
+    const label = formatCubeLabel(entry)
+    if (activeField === 'a') setCubeAInput(label)
+    if (activeField === 'b') setCubeBInput(label)
+    dismissSuggestions()
+  }
 
   // ── CORS fallback ──────────────────────────────────────────────────────────
   if (pageState === 'cors_fallback' || pageState === 'creating') {
@@ -391,45 +590,35 @@ export default function LandingPage() {
               className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-6 space-y-4 shadow-xl shadow-black/20"
               onSubmit={e => { e.preventDefault(); handleStart() }}
             >
-              {knownIds.length > 0 && (
-                <datalist id="known-cube-ids">
-                  {knownIds.map(id => <option key={id} value={id} />)}
-                </datalist>
-              )}
+              <CubeInput
+                id="cube-a-input"
+                label="Cube A"
+                accentClass="bg-red-400"
+                helper="original"
+                value={cubeAInput}
+                onChange={handleInputA}
+                suggestions={activeField === 'a' ? suggestions : []}
+                activeIndex={activeField === 'a' ? activeSuggestionIndex : -1}
+                onActivate={() => setActiveField('a')}
+                onSelect={selectSuggestion}
+                onMove={moveSuggestion}
+                onSubmit={() => handleStart()}
+              />
 
-              <div className="space-y-1.5">
-                <label htmlFor="cube-a-input" className="block text-sm font-medium text-slate-300">
-                  <span className="inline-block w-2 h-2 rounded-sm bg-red-400 mr-1.5 mb-0.5 align-middle" aria-hidden="true" />
-                  Cube A <span className="text-slate-500 font-normal">(original)</span>
-                </label>
-                <input
-                  id="cube-a-input"
-                  type="text"
-                  list="known-cube-ids"
-                  placeholder="ID, URL, or compare URL"
-                  value={cubeAInput}
-                  onChange={e => handleInputA(e.target.value)}
-                  autoComplete="off"
-                  className="w-full bg-slate-700/60 border border-slate-600 rounded-lg px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="cube-b-input" className="block text-sm font-medium text-slate-300">
-                  <span className="inline-block w-2 h-2 rounded-sm bg-green-400 mr-1.5 mb-0.5 align-middle" aria-hidden="true" />
-                  Cube B <span className="text-slate-500 font-normal">(updated)</span>
-                </label>
-                <input
-                  id="cube-b-input"
-                  type="text"
-                  list="known-cube-ids"
-                  placeholder="ID, URL, or compare URL"
-                  value={cubeBInput}
-                  onChange={e => handleInputB(e.target.value)}
-                  autoComplete="off"
-                  className="w-full bg-slate-700/60 border border-slate-600 rounded-lg px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                />
-              </div>
+              <CubeInput
+                id="cube-b-input"
+                label="Cube B"
+                accentClass="bg-green-400"
+                helper="updated"
+                value={cubeBInput}
+                onChange={handleInputB}
+                suggestions={activeField === 'b' ? suggestions : []}
+                activeIndex={activeField === 'b' ? activeSuggestionIndex : -1}
+                onActivate={() => setActiveField('b')}
+                onSelect={selectSuggestion}
+                onMove={moveSuggestion}
+                onSubmit={() => handleStart()}
+              />
 
               {(validationError || fetchError) && (
                 <p role="alert" className="text-sm text-red-400">{validationError || fetchError}</p>
