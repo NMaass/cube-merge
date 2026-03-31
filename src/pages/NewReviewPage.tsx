@@ -359,7 +359,7 @@ export function ReviewWorkspace({
   return (
     <>
       <Helmet>
-        <title>Cube Diff</title>
+        <title>Cube Merge</title>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       <div className="h-dvh bg-slate-900 flex flex-col overflow-hidden">

@@ -69,15 +69,15 @@ export default function SnapshotView() {
   return (
     <>
       <Helmet>
-        <title>{snapshot.title} — Cube Diff</title>
-        <meta name="description" content={`${snapshot.changes.length} card changes between ${snapshot.cubeAId} and ${snapshot.cubeBId}. Reviewed with Cube Diff.`} />
+        <title>{snapshot.title} — Cube Merge</title>
+        <meta name="description" content={`${snapshot.changes.length} card changes between ${snapshot.cubeAId} and ${snapshot.cubeBId}. Reviewed with Cube Merge.`} />
         <meta name="robots" content="index, follow" />
         <meta property="og:type" content="article" />
-        <meta property="og:title" content={`${snapshot.title} — Cube Diff`} />
+        <meta property="og:title" content={`${snapshot.title} — Cube Merge`} />
         <meta property="og:description" content={`${snapshot.changes.length} card changes reviewed — ${snapshot.cubeAId} vs ${snapshot.cubeBId}`} />
         <meta property="og:url" content={`${window.location.origin}/${snapshotId}`} />
         <meta name="twitter:card" content="summary" />
-        <meta name="twitter:title" content={`${snapshot.title} — Cube Diff`} />
+        <meta name="twitter:title" content={`${snapshot.title} — Cube Merge`} />
         <meta name="twitter:description" content={`${snapshot.changes.length} card changes reviewed`} />
         <link rel="canonical" href={`${window.location.origin}/${snapshotId}`} />
       </Helmet>

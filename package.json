@@ -13,19 +13,18 @@
   "dependencies": {
     "@floating-ui/react": "^0.27.19",
     "@sentry/react": "^10.43.0",
-    "@types/react-window": "^1.8.8",
     "firebase": "^12.10.0",
     "nanoid": "^5.0.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-helmet-async": "^2.0.4",
-    "react-router-dom": "^6.21.1",
     "react-window": "^2.2.7",
     "web-vitals": "^5.1.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
+    "@types/react-window": "^1.8.8",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.17",
     "firebase-tools": "^15.9.1",

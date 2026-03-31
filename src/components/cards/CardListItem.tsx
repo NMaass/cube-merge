@@ -71,7 +71,7 @@ export const CardListItem = memo(function CardListItem({ card, state, imageUrl, 
       const freshUrl = fresh.get(card.name.toLowerCase())
       const freshBack = fresh.get(card.name.toLowerCase() + '__back')
       if (!freshUrl) {
-        console.warn(`[image] "${card.name}": no image returned — card missing from Scryfall or Scryfall unreachable`)
+        if (import.meta.env.DEV) console.warn(`[image] "${card.name}": no image returned — card missing from Scryfall or Scryfall unreachable`)
         return
       }
 
@@ -81,7 +81,7 @@ export const CardListItem = memo(function CardListItem({ card, state, imageUrl, 
         setPosition(coords.x, coords.y, !!freshBack)
       }
     } catch {
-      console.warn(`[image] "${card.name}": preview fetch threw — Scryfall unreachable`)
+      if (import.meta.env.DEV) console.warn(`[image] "${card.name}": preview fetch threw — Scryfall unreachable`)
     } finally {
       setRecovering(false)
     }
@@ -99,7 +99,7 @@ export const CardListItem = memo(function CardListItem({ card, state, imageUrl, 
     if (recovering) return
     setRecovering(true)
     close()
-    console.warn(`[image] Load failed for "${card.name}" — URL: ${failedUrl}`)
+    if (import.meta.env.DEV) console.warn(`[image] Load failed for "${card.name}" — URL: ${failedUrl}`)
     clearCachedImage(card.name)
     try {
       const fresh = await fetchAndCacheImages([card.name])
@@ -110,12 +110,12 @@ export const CardListItem = memo(function CardListItem({ card, state, imageUrl, 
         setRecoveredUrl(freshUrl)
         if (freshBack) setRecoveredBack(freshBack)
       } else if (freshUrl === failedUrl) {
-        console.warn(`[image] "${card.name}": Scryfall returned same URL — CDN may be temporarily down`)
+        if (import.meta.env.DEV) console.warn(`[image] "${card.name}": Scryfall returned same URL — CDN may be temporarily down`)
       } else {
-        console.warn(`[image] "${card.name}": no image returned — card missing from Scryfall or Scryfall unreachable`)
+        if (import.meta.env.DEV) console.warn(`[image] "${card.name}": no image returned — card missing from Scryfall or Scryfall unreachable`)
       }
     } catch {
-      console.warn(`[image] "${card.name}": re-fetch threw — Scryfall unreachable`)
+      if (import.meta.env.DEV) console.warn(`[image] "${card.name}": re-fetch threw — Scryfall unreachable`)
     } finally {
       setRecovering(false)
     }
