@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Section } from '../types/cube'
-import { fetchCardCollection } from '../lib/scryfall'
-import { getCachedImage, getCachedBackImage, setCachedImages, persistImagesToFirestore, waitForFirestoreCache } from '../lib/imageCache'
+import { getCachedImage, getCachedBackImage, fetchAndCacheImages, waitForFirestoreCache } from '../lib/imageCache'
 
 export function useCardImages(sections: Section[], currentIndex: number) {
   const [imageMap, setImageMap] = useState<Map<string, string>>(new Map())
@@ -53,7 +52,7 @@ export function useCardImages(sections: Section[], currentIndex: number) {
     setLoadingSet(prev => new Set([...prev, ...fetchKeys]))
 
     try {
-      const newImages = await fetchCardCollection(toFetch)
+      const newImages = await fetchAndCacheImages(toFetch)
 
       // Cards that came back with no image — warn always, not just in dev
       for (const name of toFetch) {
@@ -62,9 +61,6 @@ export function useCardImages(sections: Section[], currentIndex: number) {
           console.warn(`[images] No image found for "${name}" — card may not exist in Scryfall`)
         }
       }
-
-      setCachedImages(newImages)
-      persistImagesToFirestore(newImages)
 
       // Only mark as fetched for cards that actually got images;
       // others stay out of fetchedRef so they can be retried next navigation

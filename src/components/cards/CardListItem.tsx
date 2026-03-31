@@ -3,8 +3,7 @@ import { CubeCard } from '../../types/cube'
 import { ManaCostPips } from './ManaCostPips'
 import { FullscreenCardModal } from './FullscreenCardModal'
 import { CardHoverPortal } from './CardHoverPortal'
-import { clearCachedImage, setCachedImages } from '../../lib/imageCache'
-import { fetchSingleCardImage } from '../../lib/scryfall'
+import { clearCachedImage, fetchAndCacheImages } from '../../lib/imageCache'
 import { useCardHoverPreview } from '../../hooks/useCardHoverPreview'
 
 export type { CardState } from '../../types/cardState'
@@ -68,7 +67,7 @@ export const CardListItem = memo(function CardListItem({ card, state, imageUrl, 
 
     setRecovering(true)
     try {
-      const fresh = await fetchSingleCardImage(card.name)
+      const fresh = await fetchAndCacheImages([card.name])
       const freshUrl = fresh.get(card.name.toLowerCase())
       const freshBack = fresh.get(card.name.toLowerCase() + '__back')
       if (!freshUrl) {
@@ -76,7 +75,6 @@ export const CardListItem = memo(function CardListItem({ card, state, imageUrl, 
         return
       }
 
-      setCachedImages(fresh)
       setRecoveredUrl(freshUrl)
       setRecoveredBack(freshBack)
       if (coords && activeRef.current) {
@@ -104,12 +102,11 @@ export const CardListItem = memo(function CardListItem({ card, state, imageUrl, 
     console.warn(`[image] Load failed for "${card.name}" — URL: ${failedUrl}`)
     clearCachedImage(card.name)
     try {
-      const fresh = await fetchSingleCardImage(card.name)
+      const fresh = await fetchAndCacheImages([card.name])
       const freshUrl = fresh.get(card.name.toLowerCase())
       const freshBack = fresh.get(card.name.toLowerCase() + '__back')
       if (freshUrl && freshUrl !== failedUrl) {
         if (import.meta.env.DEV) console.log(`[image] "${card.name}": stale/junk URL in cache — recovered from Scryfall`)
-        setCachedImages(fresh)
         setRecoveredUrl(freshUrl)
         if (freshBack) setRecoveredBack(freshBack)
       } else if (freshUrl === failedUrl) {

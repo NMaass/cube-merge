@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getCachedImage, setCachedImages } from '../../lib/imageCache'
-import { fetchSingleCardImage } from '../../lib/scryfall'
+import { getCachedImage, fetchAndCacheImages } from '../../lib/imageCache'
 import { CardHoverPortal } from '../cards/CardHoverPortal'
 import { FullscreenCardModal } from '../cards/FullscreenCardModal'
 import { useCardHoverPreview } from '../../hooks/useCardHoverPreview'
@@ -14,24 +13,25 @@ function CardMention({ name, colorClass }: { name: string; colorClass: string })
   const [previewOpen, setPreviewOpen] = useState(false)
   const [imageUrl, setImageUrl] = useState(() => getCachedImage(name))
   const [fetching, setFetching] = useState(false)
+  const [failed, setFailed] = useState(false)
 
   // Fetch image from Scryfall if not cached
   useEffect(() => {
-    if (imageUrl || fetching) return
+    if (imageUrl || fetching || failed) return
     let cancelled = false
     setFetching(true)
-    fetchSingleCardImage(name).then(fresh => {
+    fetchAndCacheImages([name]).then(fresh => {
       if (cancelled) return
       const url = fresh.get(name.toLowerCase())
-      if (url) {
-        setCachedImages(fresh)
-        setImageUrl(url)
-      }
-    }).catch(() => {}).finally(() => {
+      if (url) setImageUrl(url)
+      else setFailed(true)
+    }).catch(() => {
+      if (!cancelled) setFailed(true)
+    }).finally(() => {
       if (!cancelled) setFetching(false)
     })
     return () => { cancelled = true }
-  }, [name, imageUrl, fetching])
+  }, [name, imageUrl, fetching, failed])
 
   return (
     <>

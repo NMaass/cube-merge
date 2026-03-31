@@ -35,6 +35,20 @@ const ACCENT_COLORS: Record<ChangeType, string> = {
   decline: 'border-l-purple-500',
 }
 
+// ── Flip target labels ───────────────────────────────────────────────────────
+
+const FLIP_TARGET: Record<ChangeType, string> = {
+  remove: 'Keep', add: 'Reject', swap: 'Decline',
+  keep: 'Remove', reject: 'Add', decline: 'Swap',
+}
+
+// ── Title labels ─────────────────────────────────────────────────────────────
+
+const TITLE_MAP: Record<ChangeType, string> = {
+  add: 'Add Cards', remove: 'Remove Cards', swap: 'Swap Cards',
+  keep: 'Keep Cards', reject: 'Reject Cards', decline: 'Decline Cards',
+}
+
 // ── Main component ───────────────────────────────────────────────────────────
 
 interface UnifiedChangeModalProps {
@@ -78,6 +92,7 @@ export function UnifiedChangeModal({
   const { previewModalProps } = useCardPreview()
 
   // Reset on open
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!open) { previewModalProps.onClose(); return }
     if (existingChange) {
@@ -130,20 +145,34 @@ export function UnifiedChangeModal({
     }
   }
 
+  function buildSaveData(): ChangeData {
+    return { type: computedType, cardsOut, cardsIn, comment, unresolved, changeId: existingChange?.id }
+  }
+
   function handleSave() {
-    onSave({ type: computedType, cardsOut, cardsIn, comment, unresolved, changeId: existingChange?.id })
+    onSave(buildSaveData())
     onClearSelection?.()
     onClose()
   }
 
-  const titleMap: Record<ChangeType, string> = {
-    add: 'Add', remove: 'Remove', swap: 'Swap',
-    keep: 'Keep', reject: 'Reject', decline: 'Decline',
+  function handleApprove() {
+    // Auto-save pending edits before approving
+    onSave(buildSaveData())
+    if (isApproved) {
+      onUnapprove?.()
+    } else {
+      onApprove?.()
+    }
+    onClearSelection?.()
+    onClose()
   }
-  const title = isEditing ? 'Edit Change' : titleMap[computedType]
+
+  const hasCards = cardsOut.length + cardsIn.length > 0
+  const title = isEditing ? 'Edit Change' : TITLE_MAP[computedType]
 
   const showOut = isEditing || cardsOut.length > 0
   const showIn = isEditing || cardsIn.length > 0
+  const showEmptyState = !isEditing && !showOut && !showIn
 
   return (
     <Modal open={open} onClose={onClose} title={title} accentColor={ACCENT_COLORS[computedType]}>
@@ -155,27 +184,35 @@ export function UnifiedChangeModal({
             type="button"
             onClick={handleFlip}
             className="inline-flex items-center gap-1 px-1.5 h-6 rounded text-[11px] text-slate-500 hover:text-slate-300 hover:bg-slate-700/60 transition-colors"
-            title={negative ? 'Flip to positive' : 'Flip to negative'}
+            title={`Flip to ${FLIP_TARGET[computedType]}`}
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
             </svg>
-            Flip
+            Flip to {FLIP_TARGET[computedType]}
           </button>
           {!isEditing && <span className="ml-auto"><ReviewerNameBadge /></span>}
         </div>
 
+        {/* Empty state helper */}
+        {showEmptyState && (
+          <div className="text-center py-4 text-xs text-slate-500">
+            Search below to add cards to this change.
+          </div>
+        )}
+
         {/* Cards Out */}
         {showOut && (
           <div>
-            <div className="text-[11px] font-medium text-slate-500 uppercase tracking-wide mb-1">{outLabel}</div>
+            <div className={`text-xs font-medium text-slate-500 uppercase tracking-wide mb-1 transition-colors duration-200 ${negative ? 'text-teal-500/70' : 'text-red-500/70'}`}>{outLabel}</div>
             <div className="space-y-0.5">
               {cardsOut.map(c => (
                 <div key={c.name} className="flex items-center justify-between px-2 py-1 rounded bg-slate-700/30">
                   <span className={`text-sm ${outColor}`}>{c.name}</span>
                   {isEditing && (
                     <button onClick={() => setCardsOut(prev => prev.filter(x => x.name !== c.name))}
-                      className="text-slate-600 hover:text-red-400 text-xs ml-2" aria-label={`Remove ${c.name}`}>✕</button>
+                      className="p-1 text-slate-600 hover:text-red-400 text-xs ml-2 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
+                      aria-label={`Remove ${c.name}`}>✕</button>
                   )}
                 </div>
               ))}
@@ -191,14 +228,15 @@ export function UnifiedChangeModal({
         {/* Cards In */}
         {showIn && (
           <div>
-            <div className="text-[11px] font-medium text-slate-500 uppercase tracking-wide mb-1">{inLabel}</div>
+            <div className={`text-xs font-medium text-slate-500 uppercase tracking-wide mb-1 transition-colors duration-200 ${negative ? 'text-orange-500/70' : 'text-green-500/70'}`}>{inLabel}</div>
             <div className="space-y-0.5">
               {cardsIn.map(c => (
                 <div key={c.name} className="flex items-center justify-between px-2 py-1 rounded bg-slate-700/30">
                   <span className={`text-sm ${inColor}`}>{c.name}</span>
                   {isEditing && (
                     <button onClick={() => setCardsIn(prev => prev.filter(x => x.name !== c.name))}
-                      className="text-slate-600 hover:text-red-400 text-xs ml-2" aria-label={`Remove ${c.name}`}>✕</button>
+                      className="p-1 text-slate-600 hover:text-red-400 text-xs ml-2 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
+                      aria-label={`Remove ${c.name}`}>✕</button>
                   )}
                 </div>
               ))}
@@ -229,14 +267,14 @@ export function UnifiedChangeModal({
             onClick={() => { onClose(); onSplit() }}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-700/40 hover:bg-slate-700 border border-slate-600/30 text-xs text-slate-400 hover:text-slate-200 transition-colors"
           >
-            <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h4m0 0V3m0 4l-4 4m8-4h-4m0 0V3m0 4l4 4M8 17H4m4 0v4m0-4l-4-4m12 4h4m-4 0v4m0-4l4-4" />
             </svg>
             Split into two changes
           </button>
         )}
 
-        {/* Footer */}
+        {/* Footer — Delete separated from Save/Approve for safety */}
         <div className="flex items-center gap-2 pt-1 border-t border-slate-700/40">
           {isEditing && onDelete && (
             <Button variant="danger" size="sm" onClick={() => { onDelete(existingChange!.id); onClose() }}>
@@ -244,26 +282,26 @@ export function UnifiedChangeModal({
             </Button>
           )}
 
-          {/* Approve/unapprove toggle (edit mode only) */}
-          {isEditing && onApprove && (
-            <button
-              onClick={() => { isApproved ? onUnapprove?.() : onApprove(); onClose() }}
-              className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium transition-colors ${
-                isApproved
-                  ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-                  : 'bg-slate-700 text-slate-400 hover:text-green-400 hover:bg-slate-700/80'
-              }`}
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              {isApproved ? 'Approved' : 'Approve'}
-            </button>
-          )}
+          <div className="flex items-center gap-2 ml-auto">
+            {/* Approve/unapprove toggle (edit mode only) */}
+            {isEditing && onApprove && (
+              <button
+                onClick={handleApprove}
+                className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium transition-colors ${
+                  isApproved
+                    ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                    : 'bg-slate-700 text-slate-400 hover:text-green-400 hover:bg-slate-700/80'
+                }`}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                {isApproved ? 'Approved' : 'Approve'}
+              </button>
+            )}
 
-          <div className="flex gap-2 ml-auto">
             <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
-            <Button size="sm" onClick={handleSave}>Save</Button>
+            <Button size="sm" onClick={handleSave} disabled={!hasCards}>Save</Button>
           </div>
         </div>
       </div>

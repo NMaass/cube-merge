@@ -93,6 +93,18 @@ export function setCachedImages(imageMap: Map<string, string>) {
   saveToStorage(store)
 }
 
+/** Fetch card images from Scryfall, store in local + Firestore cache, return the map.
+ *  Single entry point for all image fetching — avoids forgetting persist calls. */
+export async function fetchAndCacheImages(names: string[]): Promise<Map<string, string>> {
+  const { fetchCardCollection } = await import('./scryfall')
+  const fresh = await fetchCardCollection(names)
+  if (fresh.size > 0) {
+    setCachedImages(fresh)
+    persistImagesToFirestore(fresh)
+  }
+  return fresh
+}
+
 export function initImageCache() {
   setTimeout(() => loadFromStorage(), 0)
 }
