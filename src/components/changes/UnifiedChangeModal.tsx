@@ -187,7 +187,7 @@ export function UnifiedChangeModal({
     // Approve / Unapprove (edit mode only)
     if (isEditing && onApprove) {
       items.push({
-        label: isApproved ? 'Remove approval' : 'Approve change',
+        label: isApproved ? 'Undo approval' : 'Approve change',
         icon: <CheckIcon className="w-4 h-4" />,
         onClick: handleApprove,
       })
@@ -195,7 +195,7 @@ export function UnifiedChangeModal({
 
     // Flip polarity
     items.push({
-      label: `Flip to ${FLIP_TARGET[computedType]}`,
+      label: `Change to ${FLIP_TARGET[computedType]}`,
       icon: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
@@ -207,7 +207,7 @@ export function UnifiedChangeModal({
     // Split (edit mode, 2+ cards)
     if (isEditing && onSplit && (cardsOut.length + cardsIn.length >= 2)) {
       items.push({
-        label: 'Split into two changes',
+        label: 'Split into two',
         icon: (
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h4m0 0V3m0 4l-4 4m8-4h-4m0 0V3m0 4l4 4M8 17H4m4 0v4m0-4l-4-4m12 4h4m-4 0v4m0-4l4-4" />
@@ -228,6 +228,7 @@ export function UnifiedChangeModal({
         ),
         onClick: () => { onDelete(existingChange!.id); onClose() },
         destructive: true,
+        separated: true,
       })
     }
 
