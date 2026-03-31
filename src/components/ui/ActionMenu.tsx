@@ -39,14 +39,16 @@ export function ActionMenu({ items }: ActionMenuProps) {
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-slate-500 hover:text-slate-300 hover:bg-slate-700/60 transition-colors"
+        className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:ring-slate-500"
+        aria-label="More actions"
         aria-expanded={open}
         aria-haspopup="menu"
       >
-        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-          <path d="M10 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z" />
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="4" cy="10" r="2" />
+          <circle cx="10" cy="10" r="2" />
+          <circle cx="16" cy="10" r="2" />
         </svg>
-        Actions
       </button>
 
       {open && (
