@@ -188,13 +188,13 @@ export function UnifiedChangeModal({
           <button
             type="button"
             onClick={handleFlip}
-            className="inline-flex items-center gap-1 px-1.5 h-6 rounded text-[11px] text-slate-500 hover:text-slate-300 hover:bg-slate-700/60 transition-colors"
+            className="p-1 rounded text-slate-600 hover:text-slate-300 hover:bg-slate-700/60 transition-colors"
             title={`Flip to ${FLIP_TARGET[computedType]}`}
+            aria-label={`Flip to ${FLIP_TARGET[computedType]}`}
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
             </svg>
-            Flip to {FLIP_TARGET[computedType]}
           </button>
           {!isEditing && <span className="ml-auto"><ReviewerNameBadge /></span>}
         </div>
@@ -209,7 +209,7 @@ export function UnifiedChangeModal({
         {/* Cards Out */}
         {showOut && (
           <div>
-            <div className={`text-xs font-medium text-slate-500 uppercase tracking-wide mb-1 transition-colors duration-200 ${negative ? 'text-teal-500/70' : 'text-red-500/70'}`}>{outLabel}</div>
+            <div className={`text-[11px] font-medium uppercase tracking-wider mb-1 ${negative ? 'text-teal-500/70' : 'text-red-500/70'}`}>{outLabel}</div>
             <div className="space-y-0.5">
               {cardsOut.map(c => (
                 <div key={c.name} className="flex items-center justify-between px-2 py-1 rounded bg-slate-700/30">
@@ -233,7 +233,7 @@ export function UnifiedChangeModal({
         {/* Cards In */}
         {showIn && (
           <div>
-            <div className={`text-xs font-medium text-slate-500 uppercase tracking-wide mb-1 transition-colors duration-200 ${negative ? 'text-orange-500/70' : 'text-green-500/70'}`}>{inLabel}</div>
+            <div className={`text-[11px] font-medium uppercase tracking-wider mb-1 ${negative ? 'text-orange-500/70' : 'text-green-500/70'}`}>{inLabel}</div>
             <div className="space-y-0.5">
               {cardsIn.map(c => (
                 <div key={c.name} className="flex items-center justify-between px-2 py-1 rounded bg-slate-700/30">
@@ -254,43 +254,22 @@ export function UnifiedChangeModal({
           </div>
         )}
 
-        {/* Comment */}
-        <AutocompleteTextarea
-          value={comment}
-          onChange={setComment}
-          diffCards={diffCards}
-          reviewerNames={reviewerNames}
-          rows={2}
-        />
-
-        {/* Unresolved */}
-        <UnresolvedCheckbox checked={unresolved} onChange={setUnresolved} />
-
-        {/* Split (edit mode, 2+ cards) */}
-        {isEditing && onSplit && (cardsOut.length + cardsIn.length >= 2) && (
-          <button
-            onClick={() => { onClose(); onSplit() }}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-700/40 hover:bg-slate-700 border border-slate-600/30 text-xs text-slate-400 hover:text-slate-200 transition-colors"
-          >
-            <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h4m0 0V3m0 4l-4 4m8-4h-4m0 0V3m0 4l4 4M8 17H4m4 0v4m0-4l-4-4m12 4h4m-4 0v4m0-4l4-4" />
-            </svg>
-            Split into two changes
-          </button>
-        )}
+        {/* Comment + unresolved */}
+        <div className="space-y-1.5">
+          <AutocompleteTextarea
+            value={comment}
+            onChange={setComment}
+            diffCards={diffCards}
+            reviewerNames={reviewerNames}
+            rows={2}
+          />
+          <UnresolvedCheckbox checked={unresolved} onChange={setUnresolved} />
+        </div>
 
         {/* Footer */}
-        <div className="flex items-center gap-2 pt-3 border-t border-slate-700/40">
-          {isEditing && onDelete && (
-            <>
-              <Button variant="danger" size="sm" onClick={() => { onDelete(existingChange!.id); onClose() }}>
-                Delete
-              </Button>
-              <div className="w-px h-5 bg-slate-700/60" />
-            </>
-          )}
-
-          <div className="flex items-center gap-2 ml-auto">
+        <div className="pt-3 border-t border-slate-700/40 space-y-2">
+          {/* Primary actions */}
+          <div className="flex items-center gap-2">
             {isEditing && onApprove && (
               <Button
                 variant={isApproved ? 'approved' : 'approve'}
@@ -301,10 +280,33 @@ export function UnifiedChangeModal({
                 {isApproved ? 'Approved' : 'Approve'}
               </Button>
             )}
-
-            <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
-            <Button size="sm" onClick={handleSave} disabled={!hasCards}>Save</Button>
+            <div className="ml-auto flex items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
+              <Button size="sm" onClick={handleSave} disabled={!hasCards}>Save</Button>
+            </div>
           </div>
+
+          {/* Secondary actions */}
+          {isEditing && (onSplit || onDelete) && (
+            <div className="flex items-center gap-3 text-xs">
+              {onSplit && (cardsOut.length + cardsIn.length >= 2) && (
+                <button
+                  onClick={() => { onClose(); onSplit() }}
+                  className="text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                  Split into two
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  onClick={() => { onDelete(existingChange!.id); onClose() }}
+                  className="text-slate-500 hover:text-red-400 transition-colors"
+                >
+                  Delete
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
