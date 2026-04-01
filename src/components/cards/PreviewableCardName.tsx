@@ -36,6 +36,7 @@ export function PreviewableCardName({ cardName, className = '', children }: Prev
       const backUrl = getCachedBackImage(cardName)
       setImageUrl(url)
       setBackImageUrl(backUrl)
+      if (!url) fetchedRef.current = false
       return url
     } finally {
       setLoading(false)
