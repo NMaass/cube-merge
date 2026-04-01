@@ -6,8 +6,7 @@ import { ReviewerNameBadge } from '../ui/ReviewerNameBadge'
 import { UnresolvedCheckbox } from '../ui/UnresolvedCheckbox'
 import { ChangeTypeBadge } from './ChangeTypeBadge'
 import { ActionMenu, ActionMenuItem } from '../ui/ActionMenu'
-import { useCardPreview } from '../../hooks/useCardPreview'
-import { FullscreenCardModal } from '../cards/FullscreenCardModal'
+import { PreviewableCardName } from '../cards/PreviewableCardName'
 import { CardSearch } from './CardSearch'
 import { CheckIcon } from '../ui/Icons'
 import { CubeCard } from '../../types/cube'
@@ -91,12 +90,10 @@ export function UnifiedChangeModal({
   const [baseType, setBaseType] = useState<ChangeType>('add')
   const [comment, setComment] = useState('')
   const [unresolved, setUnresolved] = useState(false)
-  const { previewModalProps } = useCardPreview()
-
   // Reset on open
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!open) { previewModalProps.onClose(); return }
+    if (!open) return
     if (existingChange) {
       setCardsOut(existingChange.cardsOut)
       setCardsIn(existingChange.cardsIn)
@@ -259,7 +256,7 @@ export function UnifiedChangeModal({
             <div className="space-y-0.5">
               {cardsOut.map(c => (
                 <div key={c.name} className="flex items-center justify-between px-2 py-1 rounded bg-slate-700/30">
-                  <span className={`text-sm ${outColor}`}>{c.name}</span>
+                  <PreviewableCardName cardName={c.name} className={`text-sm ${outColor} hover:opacity-80 active:opacity-60`} />
                   {isEditing && (
                     <button onClick={() => setCardsOut(prev => prev.filter(x => x.name !== c.name))}
                       className="p-1 text-slate-600 hover:text-red-400 text-xs ml-2 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
@@ -283,7 +280,7 @@ export function UnifiedChangeModal({
             <div className="space-y-0.5">
               {cardsIn.map(c => (
                 <div key={c.name} className="flex items-center justify-between px-2 py-1 rounded bg-slate-700/30">
-                  <span className={`text-sm ${inColor}`}>{c.name}</span>
+                  <PreviewableCardName cardName={c.name} className={`text-sm ${inColor} hover:opacity-80 active:opacity-60`} />
                   {isEditing && (
                     <button onClick={() => setCardsIn(prev => prev.filter(x => x.name !== c.name))}
                       className="p-1 text-slate-600 hover:text-red-400 text-xs ml-2 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
@@ -321,7 +318,6 @@ export function UnifiedChangeModal({
         </div>
       </div>
 
-      <FullscreenCardModal {...previewModalProps} />
     </Modal>
   )
 }
