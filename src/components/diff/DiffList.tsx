@@ -74,7 +74,7 @@ export const DiffList = memo(function DiffList({ sections, imageMap, loadingSet,
     <div className="flex flex-col md:flex-row flex-1 min-h-0">
       {/* Left panel — Removals */}
       <div className="flex-1 min-h-0 overflow-y-auto border-b md:border-b-0 md:border-r border-slate-700">
-        <div className="sticky top-0 z-20 flex items-center gap-2 bg-red-950/80 border-b border-red-900/60 px-3 py-2.5 md:py-2 shadow-sm">
+        <div className="sticky top-0 z-20 flex items-center gap-2 bg-red-950/70 backdrop-blur-md border-b border-red-900/60 px-3 py-2.5 md:py-2 shadow-sm">
           <span className="text-red-400 font-bold text-sm leading-none">−</span>
           <span className="text-xs font-semibold text-red-300 uppercase tracking-widest">Removals</span>
         </div>
@@ -103,7 +103,7 @@ export const DiffList = memo(function DiffList({ sections, imageMap, loadingSet,
 
       {/* Right panel — Additions */}
       <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="sticky top-0 z-20 flex items-center gap-2 bg-green-950/80 border-b border-green-900/60 px-3 py-2.5 md:py-2 shadow-sm">
+        <div className="sticky top-0 z-20 flex items-center gap-2 bg-green-950/70 backdrop-blur-md border-b border-green-900/60 px-3 py-2.5 md:py-2 shadow-sm">
           <span className="text-green-400 font-bold text-sm leading-none">+</span>
           <span className="text-xs font-semibold text-green-300 uppercase tracking-widest">Additions</span>
         </div>

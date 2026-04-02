@@ -86,7 +86,7 @@ function CubeInput({
         <span className={`inline-block w-2 h-2 rounded-sm ${accentClass} mr-1.5 mb-0.5 align-middle`} aria-hidden="true" />
         {label} <span className="text-slate-500 font-normal">({helper})</span>
       </label>
-      <div className="relative">
+      <div className="relative" style={showSuggestions ? { zIndex: 30 } : undefined}>
         <input
           id={id}
           type="text"

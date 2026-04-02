@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { AutocompleteTextarea } from '../ui/AutocompleteTextarea'
+import { PreviewableCardName } from '../cards/PreviewableCardName'
 import { Change, Comment, ChangeType } from '../../types/firestore'
 import { CubeCard } from '../../types/cube'
 import { computeChangeType, isNegativePolarity } from '../../lib/changes'
@@ -62,15 +63,16 @@ export function SplitChangeModal({ open, onClose, change, onSplit, diffCards = [
                     {neg ? 'Keeping' : 'Removing'}
                   </div>
                   {change.cardsOut.map(c => (
-                    <label key={c.name} className="flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-slate-700/40 cursor-pointer transition-colors">
+                    <div key={c.name} className="flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-slate-700/40 transition-colors">
                       <input
                         type="checkbox"
                         checked={splitOut.has(c.name)}
                         onChange={() => setSplitOut(prev => toggle(prev, c.name))}
-                        className="w-3.5 h-3.5 rounded accent-amber-500 shrink-0"
+                        className="w-3.5 h-3.5 rounded accent-amber-500 shrink-0 cursor-pointer"
+                        aria-label={`Split ${c.name}`}
                       />
-                      <span className={`text-sm ${neg ? 'text-teal-300' : 'text-red-300'}`}>{c.name}</span>
-                    </label>
+                      <PreviewableCardName cardName={c.name} className={`text-sm ${neg ? 'text-teal-300' : 'text-red-300'} hover:opacity-80 active:opacity-60`} />
+                    </div>
                   ))}
                 </div>
               )}
@@ -81,15 +83,16 @@ export function SplitChangeModal({ open, onClose, change, onSplit, diffCards = [
                     {neg ? 'Rejecting' : 'Adding'}
                   </div>
                   {change.cardsIn.map(c => (
-                    <label key={c.name} className="flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-slate-700/40 cursor-pointer transition-colors">
+                    <div key={c.name} className="flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-slate-700/40 transition-colors">
                       <input
                         type="checkbox"
                         checked={splitIn.has(c.name)}
                         onChange={() => setSplitIn(prev => toggle(prev, c.name))}
-                        className="w-3.5 h-3.5 rounded accent-amber-500 shrink-0"
+                        className="w-3.5 h-3.5 rounded accent-amber-500 shrink-0 cursor-pointer"
+                        aria-label={`Split ${c.name}`}
                       />
-                      <span className={`text-sm ${neg ? 'text-orange-300' : 'text-green-300'}`}>{c.name}</span>
-                    </label>
+                      <PreviewableCardName cardName={c.name} className={`text-sm ${neg ? 'text-orange-300' : 'text-green-300'} hover:opacity-80 active:opacity-60`} />
+                    </div>
                   ))}
                 </div>
               )}

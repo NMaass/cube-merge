@@ -1,12 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { AutocompleteTextarea } from '../ui/AutocompleteTextarea'
 import { UnresolvedCheckbox } from '../ui/UnresolvedCheckbox'
 import { ReviewerNameBadge } from '../ui/ReviewerNameBadge'
 import { useEditMode } from '../../context/EditModeContext'
-import { useCardPreview } from '../../hooks/useCardPreview'
-import { FullscreenCardModal } from '../cards/FullscreenCardModal'
 import { PreviewableCardRow } from '../changes/PreviewableCardRow'
 import { CubeCard } from '../../types/cube'
 import { ChangeType } from '../../types/firestore'
@@ -35,7 +33,6 @@ export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCar
   const { actionType, clearSelection } = useEditMode()
   const [comment, setComment] = useState('')
   const [unresolved, setUnresolved] = useState(false)
-  const { setPreviewCard, previewModalProps } = useCardPreview()
 
   const type = forceType ?? actionType ?? 'add'
 
@@ -43,13 +40,6 @@ export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCar
     ...selectedLeftCards.map(c => c.name),
     ...selectedRightCards.map(c => c.name),
   ]
-
-  // Reset transient state when modal closes
-  useEffect(() => {
-    if (!open) {
-      previewModalProps.onClose()
-    }
-  }, [open])
 
   function handleSave() {
     const finalCardsOut = forceType === 'reject' ? [] : selectedLeftCards
@@ -70,16 +60,14 @@ export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCar
             return (
               <>
                 {selectedLeftCards.map(c => (
-                  <PreviewableCardRow key={c.name} card={c}
+                  <PreviewableCardRow key={c.name} cardName={c.name}
                     colorClass={neg ? 'text-teal-300' : 'text-red-300'}
-                    prefix={neg ? '↺' : '−'}
-                    onPreview={setPreviewCard} />
+                    prefix={neg ? '↺' : '−'} />
                 ))}
                 {selectedRightCards.map(c => (
-                  <PreviewableCardRow key={c.name} card={c}
+                  <PreviewableCardRow key={c.name} cardName={c.name}
                     colorClass={neg ? 'text-orange-300' : 'text-green-300'}
-                    prefix={neg ? '×' : '+'}
-                    onPreview={setPreviewCard} />
+                    prefix={neg ? '×' : '+'} />
                 ))}
               </>
             )
@@ -105,7 +93,6 @@ export function ChangeModal({ open, onClose, selectedLeftCards, selectedRightCar
         </div>
       </div>
 
-      <FullscreenCardModal {...previewModalProps} />
     </Modal>
   )
 }
