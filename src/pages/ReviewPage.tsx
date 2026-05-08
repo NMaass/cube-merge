@@ -1279,11 +1279,16 @@ function ReviewWorkspace({
             {/* Avatar / name — opens modal with batch-update on save */}
             <button
               onClick={() => { setNameInput(identity.displayName === 'Reviewer' ? '' : identity.displayName); setEditingName(true) }}
-              className={`h-auto min-h-[44px] min-w-[44px] sm:h-8 sm:w-8 sm:min-h-0 sm:min-w-0 rounded-full flex items-center justify-center text-[11px] font-bold uppercase text-slate-200 transition-colors shrink-0 ${identity.displayName === 'Reviewer' ? 'bg-amber-700 hover:bg-amber-600 ring-2 ring-amber-500/50' : 'bg-slate-600 hover:bg-slate-500'}`}
+              className="touch-target h-8 w-8 rounded-full flex items-center justify-center text-[11px] font-bold uppercase text-slate-200 transition-colors shrink-0 bg-slate-600 hover:bg-slate-500"
               title={identity.displayName === 'Reviewer' ? 'Tap to set your name' : `Reviewing as ${identity.displayName} — tap to change`}
               aria-label={identity.displayName === 'Reviewer' ? 'Set your name' : `Your name: ${identity.displayName}. Tap to change.`}
             >
-              {identity.displayName === 'Reviewer' ? '?' : identity.displayName.charAt(0)}
+              {identity.displayName === 'Reviewer' ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+              ) : identity.displayName.charAt(0)}
             </button>
             {/* Share button — mobile only (combines Export + Copy Link) */}
             <div ref={shareMenuRef} className="relative sm:hidden">
