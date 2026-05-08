@@ -4,7 +4,7 @@ Collaborate and discuss cube updates with your playgroup.
 
 A no-accounts-required shared workspace for comparing your cube to the latest set updates, proposing swaps, and hashing out cuts with your group. Think Google Docs for cube changes.
 
-**[Try it live](https://cube-merge.pages.dev/?a=LSVCube&b=modovintage)** (LSV Vintage Cube vs MTGO Vintage Cube)
+**[Try it live](https://cube-merge.nmaass.dev/?a=LSVCube&b=modovintage)** (LSV Vintage Cube vs MTGO Vintage Cube)
 
 ---
 
