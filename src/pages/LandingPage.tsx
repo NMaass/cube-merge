@@ -228,6 +228,11 @@ export default function LandingPage() {
     seedKnownCubes()
     setKnownEntries(getKnownCubeEntries())
 
+    // Warm the request cache for the "Try it" preset so the click is instant.
+    // Errors are intentionally swallowed — the click handler surfaces real errors.
+    void fetchCubeCobraCube('LSVCube').then(c => persistKnownCube(c.meta)).catch(() => {})
+    void fetchCubeCobraCube('modovintage').then(c => persistKnownCube(c.meta)).catch(() => {})
+
     ;(async () => {
       const legacyRefs = getLegacyKnownCubeRefs()
       if (legacyRefs.length === 0) return

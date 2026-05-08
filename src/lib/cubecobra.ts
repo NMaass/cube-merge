@@ -122,7 +122,21 @@ export function parseCompareUrl(input: string): [string, string] | null {
   return m ? [m[1], m[2]] : null
 }
 
+// Page-session cache. Preload + click share one in-flight promise; settled
+// successes hit instantly. Failures are evicted so the next caller retries.
+const cubeCache = new Map<string, Promise<{ cards: CubeCard[]; meta: CubeCobraMeta }>>()
+
 export async function fetchCubeCobraCube(cubeId: string): Promise<{ cards: CubeCard[]; meta: CubeCobraMeta }> {
+  const cached = cubeCache.get(cubeId)
+  if (cached) return cached
+
+  const promise = fetchCubeCobraCubeUncached(cubeId)
+  cubeCache.set(cubeId, promise)
+  void promise.catch(() => cubeCache.delete(cubeId))
+  return promise
+}
+
+async function fetchCubeCobraCubeUncached(cubeId: string): Promise<{ cards: CubeCard[]; meta: CubeCobraMeta }> {
   const endpoints = [
     `${CUBECOBRA_BASE}/cube/api/cubeJSON/${cubeId}`,
     `${CUBECOBRA_BASE}/cube/api/cardnames/${cubeId}`,
@@ -134,7 +148,7 @@ export async function fetchCubeCobraCube(cubeId: string): Promise<{ cards: CubeC
     try {
       const response = await fetch(url, {
         headers: { Accept: 'application/json' },
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(25000),
       })
 
       // In production we fetch cubecobra.com directly, so any HTTP response
